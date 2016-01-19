@@ -1,4 +1,5 @@
 extern crate rand;
+extern crate rayon;
 
 use std::cmp::{self, Ordering};
 use std::f32;
@@ -7,6 +8,7 @@ use selection::tournament_selection_fast;
 use mo::MultiObjective;
 pub use self::domination::Dominate;
 use domination::fast_non_dominated_sort;
+use rayon::par_iter::*;
 
 pub mod selection;
 pub mod mo;
@@ -64,7 +66,7 @@ fn crowding_distance_assignment<P: MultiObjective>(solutions: &[P],
                                                    common_rank: u32,
                                                    individuals_idx: &[usize],
                                                    num_objectives: usize)
--> Vec<SolutionRankDist> {
+                                                   -> Vec<SolutionRankDist> {
     assert!(num_objectives > 0);
 
     let l = individuals_idx.len();
@@ -90,21 +92,21 @@ fn crowding_distance_assignment<P: MultiObjective>(solutions: &[P],
                 let next_idx = individuals_idx[indices[i + 1]];
                 let prev_idx = individuals_idx[indices[i - 1]];
                 distance[indices[i]] += solutions[next_idx]
-                    .dist_objective(&solutions[prev_idx], m) /
-                    norm;
+                                            .dist_objective(&solutions[prev_idx], m) /
+                                        norm;
             }
         }
     }
 
     return indices.iter()
-        .map(|&i| {
-            SolutionRankDist {
-                idx: individuals_idx[i],
-                rank: common_rank,
-                dist: distance[i],
-            }
-        })
-    .collect();
+                  .map(|&i| {
+                      SolutionRankDist {
+                          idx: individuals_idx[i],
+                          rank: common_rank,
+                          dist: distance[i],
+                      }
+                  })
+                  .collect();
 }
 
 /// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
@@ -112,7 +114,7 @@ fn crowding_distance_assignment<P: MultiObjective>(solutions: &[P],
 fn select_solutions<P: Dominate + MultiObjective>(solutions: &[P],
                                                   n: usize,
                                                   num_objectives: usize)
--> Vec<SolutionRankDist> {
+                                                  -> Vec<SolutionRankDist> {
     let mut selection = Vec::with_capacity(cmp::min(solutions.len(), n));
 
     let pareto_fronts = fast_non_dominated_sort(solutions, n);
@@ -148,7 +150,7 @@ fn select_solutions<P: Dominate + MultiObjective>(solutions: &[P],
 
 /// An unrated Population of individuals.
 pub struct UnratedPopulation<I>
-where I: Clone
+    where I: Clone
 {
     individuals: Vec<I>,
 }
@@ -156,8 +158,8 @@ where I: Clone
 /// A rated Population of individuals, i.e.
 /// each individual has a fitness assigned.
 pub struct RatedPopulation<I, F>
-where I: Clone,
-      F: Dominate + MultiObjective + Clone
+    where I: Clone,
+          F: Dominate + MultiObjective + Clone
 {
     individuals: Vec<I>,
     fitness: Vec<F>,
@@ -165,15 +167,15 @@ where I: Clone,
 
 /// A selected (ranked) Population.
 pub struct SelectedPopulation<I, F>
-where I: Clone,
-      F: Dominate + MultiObjective + Clone
+    where I: Clone,
+          F: Dominate + MultiObjective + Clone
 {
     individuals: Vec<I>,
     fitness: Vec<F>,
     rank_dist: Vec<SolutionRankDist>,
 }
 
-impl<I> UnratedPopulation<I> where I: Clone
+impl<I> UnratedPopulation<I> where I: Clone + Sync
 {
     pub fn new() -> UnratedPopulation<I> {
         UnratedPopulation { individuals: Vec::new() }
@@ -187,31 +189,46 @@ impl<I> UnratedPopulation<I> where I: Clone
         self.individuals.len()
     }
 
-    // Rate the individuals
-    pub fn rate<F, R>(self, fitness: &mut R) -> RatedPopulation<I, F>
+    /// Rate the individuals.
+    pub fn rate<F, E>(self, eval: &E) -> RatedPopulation<I, F>
         where F: Dominate + MultiObjective + Clone,
-              R: FnMut(&I) -> F
-              {
-                  let fitness = self.individuals.iter().map(|ind| fitness(ind)).collect();
-                  RatedPopulation {
-                      individuals: self.individuals,
-                      fitness: fitness
-                  }
-              }
+              E: Fn(&I) -> F
+    {
+        let fitness = self.individuals.iter().map(eval).collect();
+        RatedPopulation {
+            individuals: self.individuals,
+            fitness: fitness,
+        }
+    }
+
+    /// Rate the individuals in parallel.
+    pub fn rate_in_parallel<F, E>(self, eval: &E, weight: f64) -> RatedPopulation<I, F>
+        where F: Dominate + MultiObjective + Clone + Send,
+              E: Sync + Fn(&I) -> F
+    {
+        let mut fitness = Vec::new();
+        self.individuals.into_par_iter().map(eval).weight(weight).collect_into(&mut fitness);
+        assert!(fitness.len() == self.individuals.len());
+
+        RatedPopulation {
+            individuals: self.individuals,
+            fitness: fitness,
+        }
+    }
 }
 
 impl<I, F> RatedPopulation<I, F>
-where I: Clone,
-      F: Dominate + MultiObjective + Clone
+    where I: Clone,
+          F: Dominate + MultiObjective + Clone
 {
     pub fn select(self, population_size: usize, num_objectives: usize) -> SelectedPopulation<I, F> {
         // evaluate rank and crowding distance
-        let rank_dist = select_solutions(&self.fitness, population_size, num_objectives); 
+        let rank_dist = select_solutions(&self.fitness, population_size, num_objectives);
         assert!(rank_dist.len() <= population_size);
         SelectedPopulation {
             individuals: self.individuals,
             fitness: self.fitness,
-            rank_dist: rank_dist
+            rank_dist: rank_dist,
         }
     }
 
@@ -221,8 +238,8 @@ where I: Clone,
 }
 
 impl<I, F> SelectedPopulation<I, F>
-where I: Clone,
-      F: Dominate + MultiObjective + Clone
+    where I: Clone,
+          F: Dominate + MultiObjective + Clone
 {
     /// Generate an offspring population.
     pub fn reproduce<R, M>(&self,
@@ -230,55 +247,55 @@ where I: Clone,
                            offspring_size: usize,
                            tournament_k: usize,
                            mate: &mut M)
-        -> UnratedPopulation<I>
+                           -> UnratedPopulation<I>
         where R: Rng,
               M: FnMut(&mut R, &I, &I) -> I
-              {
-                  assert!(self.individuals.len() == self.fitness.len());
-                  assert!(self.individuals.len() >= self.rank_dist.len());
-                  assert!(tournament_k > 0);
+    {
+        assert!(self.individuals.len() == self.fitness.len());
+        assert!(self.individuals.len() >= self.rank_dist.len());
+        assert!(tournament_k > 0);
 
-                  let rank_dist = &self.rank_dist[..];
+        let rank_dist = &self.rank_dist[..];
 
-                  // create `offspring_size` new offspring using k-tournament (
-                  // select the best individual out of k randomly choosen individuals)
-                  let offspring: Vec<I> =
-                      (0..offspring_size)
-                      .map(|_| {
+        // create `offspring_size` new offspring using k-tournament (
+        // select the best individual out of k randomly choosen individuals)
+        let offspring: Vec<I> =
+            (0..offspring_size)
+                .map(|_| {
 
-                          // first parent. k candidates
-                          let p1 = tournament_selection_fast(rng,
-                                                             |i1, i2| rank_dist[i1] < rank_dist[i2],
-                                                             rank_dist.len(),
-                                                             tournament_k);
+                    // first parent. k candidates
+                    let p1 = tournament_selection_fast(rng,
+                                                       |i1, i2| rank_dist[i1] < rank_dist[i2],
+                                                       rank_dist.len(),
+                                                       tournament_k);
 
-                          // second parent. k candidates
-                          let p2 = tournament_selection_fast(rng,
-                                                             |i1, i2| rank_dist[i1] < rank_dist[i2],
-                                                             rank_dist.len(),
-                                                             tournament_k);
+                    // second parent. k candidates
+                    let p2 = tournament_selection_fast(rng,
+                                                       |i1, i2| rank_dist[i1] < rank_dist[i2],
+                                                       rank_dist.len(),
+                                                       tournament_k);
 
-                          // cross-over the two parents and produce one child (throw away
-                          // second child XXX)
+                    // cross-over the two parents and produce one child (throw away
+                    // second child XXX)
 
-                          // The potentially dominating individual is gives as first
-                          // parameter.
-                          let (p1, p2) = if rank_dist[p1] < rank_dist[p2] {
-                              (p1, p2)
-                          } else if rank_dist[p2] < rank_dist[p1] {
-                              (p2, p1)
-                          } else {
-                              (p1, p2)
-                          };
+                    // The potentially dominating individual is gives as first
+                    // parameter.
+                    let (p1, p2) = if rank_dist[p1] < rank_dist[p2] {
+                        (p1, p2)
+                    } else if rank_dist[p2] < rank_dist[p1] {
+                        (p2, p1)
+                    } else {
+                        (p1, p2)
+                    };
 
-                          mate(rng, &self.individuals[p1], &self.individuals[p2])
-                      })
-                  .collect();
+                    mate(rng, &self.individuals[p1], &self.individuals[p2])
+                })
+                .collect();
 
-                  assert!(offspring.len() == offspring_size);
+        assert!(offspring.len() == offspring_size);
 
-                  UnratedPopulation { individuals: offspring }
-              }
+        UnratedPopulation { individuals: offspring }
+    }
 
     pub fn len(&self) -> usize {
         // NOTE: the population and fitness arrays might still be larger.
@@ -303,7 +320,7 @@ where I: Clone,
 
         RatedPopulation {
             individuals: new_ind,
-            fitness: new_fit
+            fitness: new_fit,
         }
     }
 }
@@ -341,7 +358,7 @@ fn test_abc() {
     solutions.push(MultiObjective2::from((0.5, 0.5)));
 
     println!("solutions: {:?}", solutions);
-    let selection = select(&solutions[..], 5, 2);
+    let selection = select_solutions(&solutions[..], 5, 2);
     println!("selection: {:?}", selection);
 
     let fronts = fast_non_dominated_sort(&solutions[..], 10);
