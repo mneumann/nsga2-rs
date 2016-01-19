@@ -9,6 +9,7 @@ use mo::MultiObjective;
 pub use self::domination::Dominate;
 use domination::fast_non_dominated_sort;
 use rayon::par_iter::*;
+use std::convert::{AsRef, From};
 
 pub mod selection;
 pub mod mo;
@@ -175,6 +176,20 @@ pub struct SelectedPopulation<I, F>
     rank_dist: Vec<SolutionRankDist>,
 }
 
+impl<I> From<Vec<I>> for UnratedPopulation<I> where I: Clone
+{
+    fn from(v: Vec<I>) -> UnratedPopulation<I> {
+        UnratedPopulation { individuals: v }
+    }
+}
+
+impl<I> AsRef<[I]> for UnratedPopulation<I> where I: Clone
+{
+    fn as_ref(&self) -> &[I] {
+        &self.individuals
+    }
+}
+
 impl<I> UnratedPopulation<I> where I: Clone + Sync
 {
     pub fn new() -> UnratedPopulation<I> {
@@ -234,6 +249,10 @@ impl<I, F> RatedPopulation<I, F>
 
     pub fn len(&self) -> usize {
         self.individuals.len()
+    }
+
+    pub fn fitness(&self) -> &[F] {
+        &self.fitness
     }
 }
 
@@ -321,6 +340,16 @@ impl<I, F> SelectedPopulation<I, F>
         RatedPopulation {
             individuals: new_ind,
             fitness: new_fit,
+        }
+    }
+
+    pub fn all_of_rank<C>(&self, rank: usize, f: &mut C)
+        where C: FnMut(&I, &F)
+    {
+        for rd in self.rank_dist.iter() {
+            if rd.rank as usize == rank {
+                f(&self.individuals[rd.idx], &self.fitness[rd.idx]);
+            }
         }
     }
 }
