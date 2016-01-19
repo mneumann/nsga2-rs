@@ -381,6 +381,13 @@ impl<I, F> SelectedPopulation<I, F>
         }
     }
 
+    // XXX: fitness_iter()
+    pub fn fitness_to_vec(&self) -> Vec<F> {
+        let mut v = Vec::new();
+        self.all(&mut |_, f| v.push(f.clone()));
+        v
+    }
+
     pub fn all_of_rank<C>(&self, rank: usize, f: &mut C)
         where C: FnMut(&I, &F)
     {
