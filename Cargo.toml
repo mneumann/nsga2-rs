@@ -13,3 +13,4 @@ include = ["src/*.rs", "Cargo.toml", "LICENSE", "README.md"]
 
 rand = "0.3"
 rayon = { git = "https://github.com/nikomatsakis/rayon" }
+time = "0.1"

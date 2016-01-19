@@ -1,5 +1,6 @@
 extern crate rand;
 extern crate rayon;
+extern crate time;
 
 use std::cmp::{self, Ordering};
 use std::f32;
@@ -261,6 +262,13 @@ impl<I, F> RatedPopulation<I, F>
         }
     }
 
+    pub fn new() -> RatedPopulation<I, F> {
+        RatedPopulation {
+            individuals: Vec::new(),
+            fitness: Vec::new(),
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.individuals.len()
     }
@@ -330,6 +338,14 @@ impl<I, F> SelectedPopulation<I, F>
         UnratedPopulation { individuals: offspring }
     }
 
+    pub fn new() -> SelectedPopulation<I, F> {
+        SelectedPopulation {
+            individuals: Vec::new(),
+            fitness: Vec::new(),
+            rank_dist: Vec::new(),
+        }
+    }
+
     pub fn len(&self) -> usize {
         // NOTE: the population and fitness arrays might still be larger.
         self.rank_dist.len()
@@ -340,11 +356,11 @@ impl<I, F> SelectedPopulation<I, F>
     pub fn merge(self, offspring: RatedPopulation<I, F>) -> RatedPopulation<I, F> {
         let mut new_ind = Vec::with_capacity(self.len() + offspring.len());
         let mut new_fit = Vec::with_capacity(self.len() + offspring.len());
-        for rd in self.rank_dist.iter() {
+        self.all(&mut |ind, fit| {
             // XXX: Optimize. Avoid clone
-            new_ind.push(self.individuals[rd.idx].clone());
-            new_fit.push(self.fitness[rd.idx].clone());
-        }
+            new_ind.push(ind.clone());
+            new_fit.push(fit.clone());
+        });
 
         new_ind.extend(offspring.individuals);
         new_fit.extend(offspring.fitness);
@@ -357,6 +373,14 @@ impl<I, F> SelectedPopulation<I, F>
         }
     }
 
+    pub fn all<C>(&self, f: &mut C)
+        where C: FnMut(&I, &F)
+    {
+        for rd in self.rank_dist.iter() {
+            f(&self.individuals[rd.idx], &self.fitness[rd.idx]);
+        }
+    }
+
     pub fn all_of_rank<C>(&self, rank: usize, f: &mut C)
         where C: FnMut(&I, &F)
     {
@@ -365,6 +389,80 @@ impl<I, F> SelectedPopulation<I, F>
                 f(&self.individuals[rd.idx], &self.fitness[rd.idx]);
             }
         }
+    }
+}
+
+pub struct DriverConfig {
+    mu: usize,
+    lambda: usize,
+    k: usize,
+    ngen: usize,
+    num_objectives: usize,
+}
+
+pub trait Driver<I, F>: Sync
+where I: Clone + Sync,
+      F: Dominate + MultiObjective + Clone + Send
+{
+    fn random_individual<R: Rng>(&self, rng: &mut R) -> I;
+    fn random_population<R: Rng>(&self, rng: &mut R, n: usize) -> UnratedPopulation<I> {
+        (0..n).map(|_| self.random_individual(rng)).collect()
+    }
+    fn fitness(&self, ind: &I) -> F;
+    fn mate<R: Rng>(&self, rng: &mut R, p1: &I, p2: &I) -> I;
+    fn is_solution(&self, _ind: &I, _fit: &F) -> bool {
+        false
+    }
+
+    fn run<R: Rng, L>(&self,
+                      rng: &mut R,
+                      config: &DriverConfig,
+                      weight: f64,
+                      logger: &L)
+                      -> SelectedPopulation<I, F>
+        where L: Fn(usize, u64, usize, &SelectedPopulation<I, F>)
+    {
+        // this is generation 0. it's empty
+        let mut time_last = time::precise_time_ns();
+        let mut parents = SelectedPopulation::<I, F>::new();
+        let mut offspring = self.random_population(rng, config.mu);
+        let mut gen: usize = 0;
+
+        loop {
+            let rated_offspring = offspring.rate_in_parallel(&|ind| self.fitness(ind), weight);
+            let next_generation = parents.merge(rated_offspring);
+            parents = next_generation.select(config.mu, config.num_objectives);
+
+            let mut found_solutions = 0;
+            parents.all(&mut |ind, fit| {
+                if self.is_solution(ind, fit) {
+                    found_solutions += 1;
+                }
+            });
+
+            let now = time::precise_time_ns();
+            let duration = now - time_last;
+            time_last = now;
+
+            logger(gen, duration, found_solutions, &parents);
+
+            if found_solutions > 0 {
+                break;
+            }
+
+            gen += 1;
+            if gen > config.ngen {
+                break;
+            }
+
+            offspring = parents.reproduce(rng,
+                                          config.lambda,
+                                          config.k,
+                                          &|rng, p1, p2| self.mate(rng, p1, p2));
+
+        }
+
+        return parents;
     }
 }
 
