@@ -192,6 +192,10 @@ impl<I> AsRef<[I]> for UnratedPopulation<I> where I: Clone
 
 impl<I> UnratedPopulation<I> where I: Clone + Sync
 {
+    pub fn individuals(&self) -> &[I] {
+        &self.individuals
+    }
+
     pub fn new() -> UnratedPopulation<I> {
         UnratedPopulation { individuals: Vec::new() }
     }
