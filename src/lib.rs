@@ -279,10 +279,10 @@ impl<I, F> SelectedPopulation<I, F>
                            rng: &mut R,
                            offspring_size: usize,
                            tournament_k: usize,
-                           mate: &mut M)
+                           mate: &M)
                            -> UnratedPopulation<I>
         where R: Rng,
-              M: FnMut(&mut R, &I, &I) -> I
+              M: Fn(&mut R, &I, &I) -> I
     {
         assert!(self.individuals.len() == self.fitness.len());
         assert!(self.individuals.len() >= self.rank_dist.len());
