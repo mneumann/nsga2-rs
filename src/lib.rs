@@ -393,11 +393,11 @@ impl<I, F> SelectedPopulation<I, F>
 }
 
 pub struct DriverConfig {
-    mu: usize,
-    lambda: usize,
-    k: usize,
-    ngen: usize,
-    num_objectives: usize,
+    pub mu: usize,
+    pub lambda: usize,
+    pub k: usize,
+    pub ngen: usize,
+    pub num_objectives: usize,
 }
 
 pub trait Driver<I, F>: Sync
