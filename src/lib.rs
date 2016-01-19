@@ -10,6 +10,7 @@ pub use self::domination::Dominate;
 use domination::fast_non_dominated_sort;
 use rayon::par_iter::*;
 use std::convert::{AsRef, From};
+use std::iter::FromIterator;
 
 pub mod selection;
 pub mod mo;
@@ -180,6 +181,15 @@ impl<I> From<Vec<I>> for UnratedPopulation<I> where I: Clone
 {
     fn from(v: Vec<I>) -> UnratedPopulation<I> {
         UnratedPopulation { individuals: v }
+    }
+}
+
+impl<I> FromIterator<I> for UnratedPopulation<I> where I: Clone
+{
+    fn from_iter<T>(iterator: T) -> UnratedPopulation<I>
+        where T: IntoIterator<Item = I>
+    {
+        UnratedPopulation { individuals: iterator.into_iter().collect() }
     }
 }
 
