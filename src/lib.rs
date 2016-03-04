@@ -178,14 +178,16 @@ pub struct SelectedPopulation<I, F>
     rank_dist: Vec<SolutionRankDist>,
 }
 
-impl<I> From<Vec<I>> for UnratedPopulation<I> where I: Clone
+impl<I> From<Vec<I>> for UnratedPopulation<I>
+    where I: Clone
 {
     fn from(v: Vec<I>) -> UnratedPopulation<I> {
         UnratedPopulation { individuals: v }
     }
 }
 
-impl<I> FromIterator<I> for UnratedPopulation<I> where I: Clone
+impl<I> FromIterator<I> for UnratedPopulation<I>
+    where I: Clone
 {
     fn from_iter<T>(iterator: T) -> UnratedPopulation<I>
         where T: IntoIterator<Item = I>
@@ -194,14 +196,16 @@ impl<I> FromIterator<I> for UnratedPopulation<I> where I: Clone
     }
 }
 
-impl<I> AsRef<[I]> for UnratedPopulation<I> where I: Clone
+impl<I> AsRef<[I]> for UnratedPopulation<I>
+    where I: Clone
 {
     fn as_ref(&self) -> &[I] {
         &self.individuals
     }
 }
 
-impl<I> UnratedPopulation<I> where I: Clone + Sync
+impl<I> UnratedPopulation<I>
+    where I: Clone + Sync
 {
     pub fn individuals(&self) -> &[I] {
         &self.individuals
@@ -283,6 +287,7 @@ impl<I, F> SelectedPopulation<I, F>
           F: Dominate + MultiObjective + Clone
 {
     /// Generate an offspring population.
+    /// XXX: Factor out selection into a separate Trait  SelectionMethod
     pub fn reproduce<R, M>(&self,
                            rng: &mut R,
                            offspring_size: usize,
@@ -466,7 +471,6 @@ where I: Clone + Sync,
                                           config.lambda,
                                           config.k,
                                           &|rng, p1, p2| self.mate(rng, p1, p2));
-
         }
 
         return parents;
