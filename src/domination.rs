@@ -43,18 +43,23 @@ pub fn fast_non_dominated_sort<P: Dominate>(solutions: &[P], n: usize) -> Vec<Ve
                                                        .collect();
     let mut found_solutions: usize = 0;
 
-    for (i, p) in solutions.iter().enumerate() {
-        for (j, q) in solutions.iter().enumerate() {
-            if i == j {
-                continue;
-            }
+    for i in 0 .. solutions.len() {
+        for j in i+1 .. solutions.len() {
+            let p = &solutions[i];
+            let q = &solutions[j];
+
             match p.dominate(q) {
                 Ordering::Less => {
                     // p dominates q
                     // Add `q` to the set of solutions dominated by `p`.
                     dominated_solutions[i].push(j);
+                    // q is dominated by p
+                    domination_count[j] += 1;
                 }
                 Ordering::Greater => {
+                    // p is dominated by q
+                    // Add `p` to the set of solutions dominated by `q`.
+                    dominated_solutions[j].push(i);
                     // q dominates p
                     // Increment domination counter of `p`.
                     domination_count[i] += 1;
