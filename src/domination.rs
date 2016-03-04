@@ -67,7 +67,7 @@ pub fn fast_non_dominated_sort<P: Dominate>(solutions: &[P], n: usize) -> Vec<Ve
 
 #[cfg(test)]
 mod tests {
-    use super::Dominate;
+    use super::{fast_non_dominated_sort, Dominate};
 
     struct T(u32, u32);
 
@@ -98,7 +98,7 @@ mod tests {
     #[test]
     fn test_non_dominated_sort() {
         let solutions = vec![T(1, 2), T(1, 2), T(2, 1), T(1, 3), T(0, 2)];
-        let fronts = super::fast_non_dominated_sort(&solutions, solutions.len());
+        let fronts = fast_non_dominated_sort(&solutions, solutions.len());
 
         assert_eq!(3, fronts.len());
         assert_eq!(&vec![2, 4], &fronts[0]);
