@@ -1,9 +1,14 @@
+/// The (minimum) dominance relation.
+
 pub trait Dominate<Rhs=Self> {
     fn dominates(&self, other: &Rhs) -> bool;
 }
 
-/// Stop after we have found `n` solutions. As we include the whole pareto
-/// front, there are probably more solutions returned.
+/// Perform a non dominated sort of the `solutions`.
+///
+/// Stop after we have found `n` solutions. As we include the whole pareto front, there are
+/// probably more solutions returned.
+
 pub fn fast_non_dominated_sort<P: Dominate>(solutions: &[P], n: usize) -> Vec<Vec<usize>> {
     let mut fronts: Vec<Vec<usize>> = Vec::new();
     let mut current_front = Vec::new();
@@ -58,4 +63,46 @@ pub fn fast_non_dominated_sort<P: Dominate>(solutions: &[P], n: usize) -> Vec<Ve
     }
 
     return fronts;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Dominate;
+
+    struct T(u32, u32);
+
+    impl Dominate for T {
+        fn dominates(&self, other: &Self) -> bool {
+            if self.0 > other.0 || self.1 > other.1 {
+                return false;
+            }
+
+            debug_assert!(self.0 <= other.0 && self.1 <= other.1);
+
+            if self.0 < other.0 || self.1 < other.1 {
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    #[test]
+    fn test_dominates() {
+        assert_eq!(false, T(1, 2).dominates(&T(1, 2)));
+        assert_eq!(false, T(1, 2).dominates(&T(2, 1)));
+        assert_eq!(true, T(1, 2).dominates(&T(1, 3)));
+        assert_eq!(true, T(0, 2).dominates(&T(1, 2)));
+    }
+
+    #[test]
+    fn test_non_dominated_sort() {
+        let solutions = vec![T(1, 2), T(1, 2), T(2, 1), T(1, 3), T(0, 2)];
+        let fronts = super::fast_non_dominated_sort(&solutions, solutions.len());
+
+        assert_eq!(3, fronts.len());
+        assert_eq!(&vec![2, 4], &fronts[0]);
+        assert_eq!(&vec![0, 1], &fronts[1]);
+        assert_eq!(&vec![3], &fronts[2]);
+    }
 }
