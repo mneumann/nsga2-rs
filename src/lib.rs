@@ -17,7 +17,7 @@ pub mod selection;
 pub mod mo;
 pub mod domination;
 
-impl<T: MultiObjective> Dominate<T> for T {
+impl<T: MultiObjective> Dominate for T {
     fn dominates(&self, other: &Self) -> bool {
         let mut less_cnt = 0;
         for i in 0..cmp::min(self.num_objectives(), other.num_objectives()) {

@@ -1,7 +1,31 @@
-/// The (minimum) dominance relation.
+use std::cmp::Ordering;
 
-pub trait Dominate<Rhs=Self> {
-    fn dominates(&self, other: &Rhs) -> bool;
+/// The dominance relation.
+
+pub trait Dominate {
+
+    /// If `self` dominates `other`, return `Less`.
+    /// If `other` dominates `self`, return `Greater`.
+    /// If neither `self` nor `other` dominates the other, `Equal`.
+
+    fn dominate(&self, other: &Self) -> Ordering {
+        if self.dominates(other) {
+            Ordering::Less
+        } else if other.dominates(self) {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    }
+
+    /// Returns true if `self` dominates `other`.
+
+    fn dominates(&self, other: &Self) -> bool {
+        match self.dominate(other) {
+            Ordering::Less => true,
+            _ => false
+        }
+    }
 }
 
 /// Perform a non dominated sort of the `solutions`.
@@ -24,12 +48,18 @@ pub fn fast_non_dominated_sort<P: Dominate>(solutions: &[P], n: usize) -> Vec<Ve
             if i == j {
                 continue;
             }
-            if p.dominates(q) {
-                // Add `q` to the set of solutions dominated by `p`.
-                dominated_solutions[i].push(j);
-            } else if q.dominates(p) {
-                // Increment domination counter of `p`.
-                domination_count[i] += 1;
+            match p.dominate(q) {
+                Ordering::Less => {
+                    // p dominates q
+                    // Add `q` to the set of solutions dominated by `p`.
+                    dominated_solutions[i].push(j);
+                }
+                Ordering::Greater => {
+                    // q dominates p
+                    // Increment domination counter of `p`.
+                    domination_count[i] += 1;
+                }
+                _ => {}
             }
         }
 
@@ -68,31 +98,38 @@ pub fn fast_non_dominated_sort<P: Dominate>(solutions: &[P], n: usize) -> Vec<Ve
 #[cfg(test)]
 mod tests {
     use super::{fast_non_dominated_sort, Dominate};
+    use std::cmp::Ordering;
 
     struct T(u32, u32);
 
     impl Dominate for T {
-        fn dominates(&self, other: &Self) -> bool {
-            if self.0 > other.0 || self.1 > other.1 {
-                return false;
+        fn dominate(&self, other: &Self) -> Ordering {
+            if self.0 < other.0 && self.1 <= other.1 {
+                return Ordering::Less;
+            }
+            if self.0 <= other.0 && self.1 < other.1 {
+                return Ordering::Less;
             }
 
-            debug_assert!(self.0 <= other.0 && self.1 <= other.1);
-
-            if self.0 < other.0 || self.1 < other.1 {
-                return true;
+            if self.0 > other.0 && self.1 >= other.1 {
+                return Ordering::Greater;
+            }
+            if self.0 >= other.0 && self.1 > other.1 {
+                return Ordering::Greater;
             }
 
-            return false;
+            return Ordering::Equal;
         }
     }
 
     #[test]
-    fn test_dominates() {
-        assert_eq!(false, T(1, 2).dominates(&T(1, 2)));
-        assert_eq!(false, T(1, 2).dominates(&T(2, 1)));
-        assert_eq!(true, T(1, 2).dominates(&T(1, 3)));
-        assert_eq!(true, T(0, 2).dominates(&T(1, 2)));
+    fn test_dominate() {
+        assert_eq!(Ordering::Equal, T(1, 2).dominate(&T(1, 2)));
+        assert_eq!(Ordering::Equal, T(1, 2).dominate(&T(2, 1)));
+        assert_eq!(Ordering::Less, T(1, 2).dominate(&T(1, 3)));
+        assert_eq!(Ordering::Less, T(0, 2).dominate(&T(1, 2)));
+        assert_eq!(Ordering::Greater, T(1, 3).dominate(&T(1, 2)));
+        assert_eq!(Ordering::Greater, T(1,2).dominate(&T(0, 2)));
     }
 
     #[test]
