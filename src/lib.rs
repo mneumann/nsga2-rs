@@ -94,9 +94,9 @@ fn crowding_distance_assignment<P: MultiObjective>(solutions: &[P],
             for i in 1..(l - 1) {
                 let next_idx = individuals_idx[indices[i + 1]];
                 let prev_idx = individuals_idx[indices[i - 1]];
-                distance[indices[i]] += solutions[next_idx]
-                                            .dist_objective(&solutions[prev_idx], m) /
-                                        norm;
+                let dist = solutions[next_idx].dist_objective(&solutions[prev_idx], m);
+                debug_assert!(dist >= 0.0);
+                distance[indices[i]] += dist / norm;
             }
         }
     }
@@ -120,7 +120,7 @@ fn select_solutions<P: Dominate + MultiObjective>(solutions: &[P],
                                                   -> Vec<SolutionRankDist> {
     let mut selection = Vec::with_capacity(cmp::min(solutions.len(), n));
 
-    let pareto_fronts = fast_non_dominated_sort(solutions, n);
+    let pareto_fronts = fast_non_dominated_sort(solutions, n, &mut|a,b| a.dominate(b));
 
     for (rank, front) in pareto_fronts.iter().enumerate() {
         if selection.len() >= n {
@@ -134,6 +134,7 @@ fn select_solutions<P: Dominate + MultiObjective>(solutions: &[P],
                                                                   num_objectives);
         if solution_rank_dist.len() <= missing {
             // whole front fits into result.
+            // XXX: should we sort?
             selection.extend(solution_rank_dist);
             assert!(selection.len() <= n);
         } else {
@@ -513,7 +514,7 @@ fn test_abc() {
     let selection = select_solutions(&solutions[..], 5, 2);
     println!("selection: {:?}", selection);
 
-    let fronts = fast_non_dominated_sort(&solutions[..], 10);
+    let fronts = fast_non_dominated_sort(&solutions[..], 10, &mut|a,b| a.dominate(b));
     println!("solutions: {:?}", solutions);
     println!("fronts: {:?}", fronts);
 
