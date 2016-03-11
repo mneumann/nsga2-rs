@@ -6,7 +6,7 @@ use std::cmp::{self, Ordering};
 use rand::Rng;
 use selection::tournament_selection_fast;
 use mo::MultiObjective;
-pub use self::domination::{Dominate, DominationHelper};
+pub use self::domination::{Domination, Dominate, DominationHelper};
 use domination::fast_non_dominated_sort;
 use rayon::par_iter::*;
 use std::convert::{AsRef, From};
@@ -38,13 +38,17 @@ impl<T: MultiObjective> Dominate for T {
 
 /// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
 /// objectives.
-fn select_solutions<P: Dominate + MultiObjective>(solutions: &[P],
-                                                  n: usize,
-                                                  num_objectives: usize)
-                                                  -> Vec<SolutionRankDist> {
+fn select_solutions<T, D>(solutions: &[T],
+                          n: usize,
+                          num_objectives: usize,
+                          domination: &mut D)
+                          -> Vec<SolutionRankDist>
+    where T: MultiObjective,
+          D: Domination<T>
+{
     let mut selection = Vec::with_capacity(cmp::min(solutions.len(), n));
 
-    let pareto_fronts = fast_non_dominated_sort(solutions, n, &mut DominationHelper);
+    let pareto_fronts = fast_non_dominated_sort(solutions, n, domination);
 
     for (rank, front) in pareto_fronts.iter().enumerate() {
         if selection.len() >= n {
@@ -180,9 +184,18 @@ impl<I, F> RatedPopulation<I, F>
     where I: Clone,
           F: Dominate + MultiObjective + Clone
 {
-    pub fn select(self, population_size: usize, num_objectives: usize) -> SelectedPopulation<I, F> {
+    pub fn select<D>(self,
+                     population_size: usize,
+                     num_objectives: usize,
+                     domination: &mut D)
+                     -> SelectedPopulation<I, F>
+        where D: Domination<F>
+    {
         // evaluate rank and crowding distance
-        let rank_dist = select_solutions(&self.fitness, population_size, num_objectives);
+        let rank_dist = select_solutions(&self.fitness,
+                                         population_size,
+                                         num_objectives,
+                                         domination);
         assert!(rank_dist.len() <= population_size);
         SelectedPopulation {
             individuals: self.individuals,
@@ -367,13 +380,16 @@ where I: Clone + Sync,
         false
     }
 
-    fn run<R: Rng, L>(&self,
-                      rng: &mut R,
-                      config: &DriverConfig,
-                      weight: f64,
-                      logger: &L)
-                      -> SelectedPopulation<I, F>
-        where L: Fn(usize, u64, usize, &SelectedPopulation<I, F>)
+    fn run<R, D, L>(&self,
+                    rng: &mut R,
+                    config: &DriverConfig,
+                    weight: f64,
+                    domination: &mut D,
+                    logger: &L)
+                    -> SelectedPopulation<I, F>
+        where R: Rng,
+              D: Domination<F>,
+              L: Fn(usize, u64, usize, &SelectedPopulation<I, F>)
     {
         // this is generation 0. it's empty
         let mut time_last = time::precise_time_ns();
@@ -384,7 +400,7 @@ where I: Clone + Sync,
         loop {
             let rated_offspring = offspring.rate_in_parallel(&|ind| self.fitness(ind), weight);
             let next_generation = parents.merge(rated_offspring);
-            parents = next_generation.select(config.mu, config.num_objectives);
+            parents = next_generation.select(config.mu, config.num_objectives, domination);
 
             let mut found_solutions = 0;
             parents.all(&mut |ind, fit| {
@@ -451,7 +467,7 @@ fn test_abc() {
     solutions.push(MultiObjective2::from((0.5, 0.5)));
 
     println!("solutions: {:?}", solutions);
-    let selection = select_solutions(&solutions[..], 5, 2);
+    let selection = select_solutions(&solutions[..], 5, 2, &mut DominationHelper);
     println!("selection: {:?}", selection);
 
     let fronts = fast_non_dominated_sort(&solutions[..], 10, &mut DominationHelper);

@@ -6,6 +6,7 @@ extern crate nsga2;
 use rand::{Rng, Closed01};
 use nsga2::{Driver, DriverConfig};
 use nsga2::mo::MultiObjective2;
+use nsga2::domination::DominationHelper;
 
 /// optimal pareto front (f_1, 1 - sqrt(f_1))
 /// 0 <= x[i] <= 1.0
@@ -139,17 +140,17 @@ impl ZdtGenome {
     fn crossover1<R: Rng>(rng: &mut R, parents: (&Self, &Self), eta: f32) -> Self {
         assert!(parents.0.len() == parents.1.len());
         let xs: Vec<_> = parents.0
-                          .xs
-                          .iter()
-                          .zip(parents.1.xs.iter())
-                          .map(|(&x1, &x2)| {
-                              let (c1, _c2) = sbx_single_var_bounded(rng,
-                                                                     (x1, x2),
-                                                                     (0.0, 1.0),
-                                                                     eta);
-                              c1
-                          })
-                          .collect();
+                                .xs
+                                .iter()
+                                .zip(parents.1.xs.iter())
+                                .map(|(&x1, &x2)| {
+                                    let (c1, _c2) = sbx_single_var_bounded(rng,
+                                                                           (x1, x2),
+                                                                           (0.0, 1.0),
+                                                                           eta);
+                                    c1
+                                })
+                                .collect();
         ZdtGenome::new(xs)
     }
 }
@@ -160,7 +161,6 @@ struct ZdtDriver {
 }
 
 impl Driver<ZdtGenome, MultiObjective2<f32>> for ZdtDriver {
-
     fn random_individual<R: Rng>(&self, rng: &mut R) -> ZdtGenome {
         ZdtGenome::random(rng, self.zdt_order)
     }
@@ -179,7 +179,7 @@ fn main() {
 
     let driver = ZdtDriver {
         zdt_order: 2, // ZDT1 order
-        mating_eta: 2.0,  // cross-over variance
+        mating_eta: 2.0, // cross-over variance
     };
 
     let driver_config = DriverConfig {
@@ -190,26 +190,27 @@ fn main() {
         num_objectives: 2, // number of objectives
     };
 
-    let final_population = driver.run(&mut rng, &driver_config, 1.0, &|_, _, _, _| {});
+    let final_population = driver.run(&mut rng, &driver_config, 1.0, &mut DominationHelper, &|_, _, _, _| {});
 
     let max_rank = final_population.max_rank().unwrap();
-    for rank in 0 .. max_rank+1 {
+    for rank in 0..max_rank + 1 {
         println!("# front {}", rank);
 
         println!("x\ty");
         let mut xys = Vec::new();
-        final_population.all_of_rank(rank, &mut|_, fitness| {
-            xys.push((fitness.objectives[0], fitness.objectives[1]));
-        });
+        final_population.all_of_rank(rank,
+                                     &mut |_, fitness| {
+                                         xys.push((fitness.objectives[0], fitness.objectives[1]));
+                                     });
 
-        xys.sort_by(|a,b| a.0.partial_cmp(&b.0).unwrap());
+        xys.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         for &(x, y) in xys.iter() {
             println!("{:.3}\t{:.3}", x, y);
         }
     }
 
-    //println!("x\ty\tfront\tcrowding");
-    //final_population.all_with_rank_dist(&mut|_, fitness, rank, dist| {
+    // println!("x\ty\tfront\tcrowding");
+    // final_population.all_with_rank_dist(&mut|_, fitness, rank, dist| {
     //    println!("{:.3}\t{:.3}\t{}\t{:.4}", fitness.objectives[0], fitness.objectives[1], rank, dist);
-    //});
+    // });
 }
