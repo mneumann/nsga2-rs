@@ -2,12 +2,9 @@ extern crate rand;
 extern crate rayon;
 extern crate time;
 
-use std::cmp;
 use rand::Rng;
 use mo::MultiObjective;
 pub use self::domination::{Domination, Dominate, DominationHelper};
-use domination::FastNonDominatedSorter;
-use crowding_distance::{crowding_distance_assignment, SolutionRankDist};
 pub use population::{UnratedPopulation, RatedPopulation, SelectedPopulation};
 
 pub mod selection;
@@ -15,51 +12,6 @@ pub mod mo;
 pub mod domination;
 pub mod crowding_distance;
 pub mod population;
-
-/// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
-/// objectives.
-
-fn select_solutions<T, D>(solutions: &[T],
-                          n: usize,
-                          num_objectives: usize,
-                          domination: &mut D)
-                          -> Vec<SolutionRankDist>
-    where T: MultiObjective,
-          D: Domination<T>
-{
-    let mut selection = Vec::with_capacity(cmp::min(solutions.len(), n));
-
-    let pareto_fronts = FastNonDominatedSorter::new(solutions, domination);
-
-    for (rank, front) in pareto_fronts.enumerate() {
-        if selection.len() >= n {
-            break;
-        }
-        let missing = n - selection.len();
-
-        let mut solution_rank_dist = crowding_distance_assignment(solutions,
-                                                                  rank as u32,
-                                                                  &front,
-                                                                  num_objectives);
-        if solution_rank_dist.len() <= missing {
-            // whole front fits into result.
-            // XXX: should we sort?
-            selection.extend(solution_rank_dist);
-            assert!(selection.len() <= n);
-        } else {
-            // choose only best from this front, according to the crowding distance.
-            solution_rank_dist.sort_by(|a, b| {
-                debug_assert!(a.rank == b.rank);
-                a.partial_cmp(b).unwrap()
-            });
-            selection.extend(solution_rank_dist.into_iter().take(missing));
-            assert!(selection.len() == n);
-            break;
-        }
-    }
-
-    return selection;
-}
 
 pub struct DriverConfig {
     pub mu: usize,
@@ -162,6 +114,8 @@ fn test_dominates() {
 fn test_abc() {
     use mo::MultiObjective2;
     use domination::fast_non_dominated_sort;
+    use selection::select_solutions;
+    use crowding_distance::crowding_distance_assignment;
 
     let mut solutions: Vec<MultiObjective2<f32>> = Vec::new();
     solutions.push(MultiObjective2::from((1.0, 0.1)));

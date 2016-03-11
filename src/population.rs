@@ -1,7 +1,7 @@
 use domination::{Dominate, Domination};
 use mo::MultiObjective;
 use crowding_distance::SolutionRankDist;
-use super::select_solutions;
+use selection::select_solutions;
 use std::iter::FromIterator;
 use rayon::par_iter::*;
 use selection::tournament_selection_fast;
