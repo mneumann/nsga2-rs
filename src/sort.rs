@@ -122,4 +122,3 @@ pub fn fast_non_dominated_sort<T, D>(solutions: &[T],
     }
     return fronts;
 }
-
