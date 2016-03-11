@@ -4,14 +4,14 @@ use std::f32;
 
 #[derive(Debug)]
 pub struct SolutionRankDist {
-    pub idx: usize,
     pub rank: u32,
     pub dist: f32,
+    pub idx: usize,
 }
 
 impl PartialEq for SolutionRankDist {
     #[inline]
-    fn eq(&self, other: &SolutionRankDist) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.rank == other.rank && self.dist == other.dist
     }
 }
@@ -20,7 +20,7 @@ impl PartialEq for SolutionRankDist {
 impl PartialOrd for SolutionRankDist {
     #[inline]
     // compare on rank first (ASC), then on dist (DESC)
-    fn partial_cmp(&self, other: &SolutionRankDist) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match self.rank.partial_cmp(&other.rank) {
             Some(Ordering::Equal) => {
                 // first criterion equal, second criterion decides
@@ -33,10 +33,10 @@ impl PartialOrd for SolutionRankDist {
 }
 
 pub fn crowding_distance_assignment<P: MultiObjective>(solutions: &[P],
-                                                   common_rank: u32,
-                                                   individuals_idx: &[usize],
-                                                   num_objectives: usize)
-                                                   -> Vec<SolutionRankDist> {
+                                                       common_rank: u32,
+                                                       individuals_idx: &[usize],
+                                                       num_objectives: usize)
+                                                       -> Vec<SolutionRankDist> {
     assert!(num_objectives > 0);
 
     let l = individuals_idx.len();
@@ -78,4 +78,3 @@ pub fn crowding_distance_assignment<P: MultiObjective>(solutions: &[P],
                   })
                   .collect();
 }
-

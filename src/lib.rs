@@ -54,7 +54,7 @@ fn select_solutions<P: Dominate + MultiObjective>(solutions: &[P],
 
         let mut solution_rank_dist = crowding_distance_assignment(solutions,
                                                                   rank as u32,
-                                                                  &front[..],
+                                                                  &front,
                                                                   num_objectives);
         if solution_rank_dist.len() <= missing {
             // whole front fits into result.
@@ -315,7 +315,10 @@ impl<I, F> SelectedPopulation<I, F>
         where C: FnMut(&I, &F, usize, f32)
     {
         for rd in self.rank_dist.iter() {
-            f(&self.individuals[rd.idx], &self.fitness[rd.idx], rd.rank as usize, rd.dist);
+            f(&self.individuals[rd.idx],
+              &self.fitness[rd.idx],
+              rd.rank as usize,
+              rd.dist);
         }
     }
 
