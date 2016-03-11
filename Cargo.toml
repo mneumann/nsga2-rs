@@ -5,12 +5,12 @@ authors = ["Michael Neumann <mneumann@ntecs.de>"]
 license = "MIT"
 repository = "https://github.com/mneumann/nsga2-rs"
 description = "NSGA-2"
-keywords = ["evolution", "genetic", "algorithm"]
+keywords = ["evolution", "algorithm", "multi-objective", "nsga"]
 
-include = ["src/*.rs", "Cargo.toml", "LICENSE", "README.md"]
+include = ["src/*.rs", "examples/*.rs", "Cargo.toml", "LICENSE", "README.md"]
 
 [dependencies]
 
 rand = "0.3"
-rayon = { git = "https://github.com/nikomatsakis/rayon" }
+rayon = "0.3.1"
 time = "0.1"
