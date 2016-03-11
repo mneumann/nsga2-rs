@@ -8,11 +8,13 @@ pub mod domination;
 pub mod crowding_distance;
 pub mod population;
 pub mod driver;
+pub mod sort;
 
 #[test]
 fn test_abc() {
     use multi_objective::MultiObjective2;
-    use domination::{fast_non_dominated_sort, DominationHelper};
+    use domination::DominationHelper;
+    use sort::fast_non_dominated_sort;
     use selection::select_solutions;
     use crowding_distance::crowding_distance_assignment;
 

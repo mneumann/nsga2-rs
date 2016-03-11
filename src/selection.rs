@@ -1,6 +1,7 @@
 use rand::Rng;
 use multi_objective::MultiObjective;
-use domination::{Domination, FastNonDominatedSorter};
+use domination::Domination;
+use sort::FastNonDominatedSorter;
 use crowding_distance::{SolutionRankDist, crowding_distance_assignment};
 use std::cmp;
 
