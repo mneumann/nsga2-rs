@@ -2,7 +2,7 @@ extern crate rand;
 extern crate rayon;
 extern crate time;
 
-use std::cmp::{self, Ordering};
+use std::cmp;
 use rand::Rng;
 use selection::tournament_selection_fast;
 use mo::MultiObjective;
@@ -17,24 +17,6 @@ pub mod selection;
 pub mod mo;
 pub mod domination;
 mod crowding_distance;
-
-impl<T: MultiObjective> Dominate for T {
-    fn dominates(&self, other: &Self) -> bool {
-        let mut less_cnt = 0;
-        for i in 0..cmp::min(self.num_objectives(), other.num_objectives()) {
-            match self.cmp_objective(other, i) {
-                Ordering::Greater => {
-                    return false;
-                }
-                Ordering::Less => {
-                    less_cnt += 1;
-                }
-                Ordering::Equal => {}
-            }
-        }
-        return less_cnt > 0;
-    }
-}
 
 /// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
 /// objectives.

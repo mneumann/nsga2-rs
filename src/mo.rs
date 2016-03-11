@@ -1,6 +1,7 @@
-use std::cmp::Ordering;
+use std::cmp::{self, Ordering};
 use std::ops::Sub;
 use std::convert::From;
+use domination::Dominate;
 
 pub trait MultiObjective {
     fn num_objectives(&self) -> usize;
@@ -151,5 +152,23 @@ impl<T, R> MultiObjective for MultiObjectiveVec<T>
     #[inline]
     fn dist_objective(&self, other: &Self, objective: usize) -> f32 {
         (self.objectives[objective] - other.objectives[objective]).into()
+    }
+}
+
+impl<T: MultiObjective> Dominate for T {
+    fn dominates(&self, other: &Self) -> bool {
+        let mut less_cnt = 0;
+        for i in 0..cmp::min(self.num_objectives(), other.num_objectives()) {
+            match self.cmp_objective(other, i) {
+                Ordering::Greater => {
+                    return false;
+                }
+                Ordering::Less => {
+                    less_cnt += 1;
+                }
+                Ordering::Equal => {}
+            }
+        }
+        return less_cnt > 0;
     }
 }
