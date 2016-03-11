@@ -1,5 +1,5 @@
 use domination::{Dominate, Domination};
-use mo::MultiObjective;
+use multi_objective::MultiObjective;
 use crowding_distance::SolutionRankDist;
 use selection::select_solutions;
 use std::iter::FromIterator;

@@ -3,7 +3,7 @@ extern crate rayon;
 extern crate time;
 
 pub mod selection;
-pub mod mo;
+pub mod multi_objective;
 pub mod domination;
 pub mod crowding_distance;
 pub mod population;
@@ -11,7 +11,7 @@ pub mod driver;
 
 #[test]
 fn test_abc() {
-    use mo::MultiObjective2;
+    use multi_objective::MultiObjective2;
     use domination::{fast_non_dominated_sort, DominationHelper};
     use selection::select_solutions;
     use crowding_distance::crowding_distance_assignment;

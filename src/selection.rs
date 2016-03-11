@@ -1,5 +1,5 @@
 use rand::Rng;
-use mo::MultiObjective;
+use multi_objective::MultiObjective;
 use domination::{Domination, FastNonDominatedSorter};
 use crowding_distance::{SolutionRankDist, crowding_distance_assignment};
 use std::cmp;

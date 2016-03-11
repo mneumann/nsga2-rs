@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use mo::MultiObjective;
+use multi_objective::MultiObjective;
 use std::f32;
 
 #[derive(Debug)]

@@ -1,6 +1,6 @@
 use rand::Rng;
 use domination::{Dominate, Domination};
-use mo::MultiObjective;
+use multi_objective::MultiObjective;
 use population::{UnratedPopulation, SelectedPopulation};
 use time;
 
