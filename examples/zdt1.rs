@@ -4,7 +4,7 @@ extern crate rand;
 extern crate nsga2;
 
 use rand::{Rng, Closed01};
-use nsga2::{Driver, DriverConfig};
+use nsga2::driver::{Driver, DriverConfig};
 use nsga2::mo::MultiObjective2;
 use nsga2::domination::DominationHelper;
 
