@@ -217,7 +217,7 @@ impl<I, F> SelectedPopulation<I, F>
         self.rank_dist.len()
     }
 
-    /// Merging a selected population result in a rated population as the selection 
+    /// Merging a selected population result in a rated population as the selection
     /// criteria is no longer met.
     pub fn merge(self, offspring: RatedPopulation<I, F>) -> RatedPopulation<I, F> {
         let mut new_ind = Vec::with_capacity(self.len() + offspring.len());

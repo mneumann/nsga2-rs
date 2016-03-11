@@ -8,10 +8,10 @@ use std::cmp;
 /// objectives.
 
 pub fn select_solutions<T, D>(solutions: &[T],
-                          n: usize,
-                          num_objectives: usize,
-                          domination: &mut D)
-                          -> Vec<SolutionRankDist>
+                              n: usize,
+                              num_objectives: usize,
+                              domination: &mut D)
+                              -> Vec<SolutionRankDist>
     where T: MultiObjective,
           D: Domination<T>
 {
