@@ -7,7 +7,7 @@ use std::f32;
 use rand::Rng;
 use selection::tournament_selection_fast;
 use mo::MultiObjective;
-pub use self::domination::Dominate;
+pub use self::domination::{Dominate, DominationHelper};
 use domination::fast_non_dominated_sort;
 use rayon::par_iter::*;
 use std::convert::{AsRef, From};
@@ -120,7 +120,7 @@ fn select_solutions<P: Dominate + MultiObjective>(solutions: &[P],
                                                   -> Vec<SolutionRankDist> {
     let mut selection = Vec::with_capacity(cmp::min(solutions.len(), n));
 
-    let pareto_fronts = fast_non_dominated_sort(solutions, n, &mut|a,b| a.dominate(b));
+    let pareto_fronts = fast_non_dominated_sort(solutions, n, &mut DominationHelper);
 
     for (rank, front) in pareto_fronts.iter().enumerate() {
         if selection.len() >= n {
@@ -527,7 +527,7 @@ fn test_abc() {
     let selection = select_solutions(&solutions[..], 5, 2);
     println!("selection: {:?}", selection);
 
-    let fronts = fast_non_dominated_sort(&solutions[..], 10, &mut|a,b| a.dominate(b));
+    let fronts = fast_non_dominated_sort(&solutions[..], 10, &mut DominationHelper);
     println!("solutions: {:?}", solutions);
     println!("fronts: {:?}", fronts);
 

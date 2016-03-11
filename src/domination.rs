@@ -1,18 +1,21 @@
 use std::cmp::Ordering;
 
-pub trait Domination<T> {
-    fn domination(&mut self, lhs: &T, rhs: &T) -> Ordering;
-}
-
-/// The dominance relation.
+/// The dominance relation between two items.
 
 pub trait Dominate {
 
-    /// If `self` dominates `other`, return `Less`.
-    /// If `other` dominates `self`, return `Greater`.
-    /// If neither `self` nor `other` dominates the other, `Equal`.
+    /// Returns true if `self` dominates `other`.
 
-    fn dominate(&self, other: &Self) -> Ordering {
+    fn dominates(&self, other: &Self) -> bool {
+        match self.domination_ord(other) {
+            Ordering::Less => true,
+            _ => false,
+        }
+    }
+
+    /// Returns the domination order.
+
+    fn domination_ord(&self, other: &Self) -> Ordering {
         if self.dominates(other) {
             Ordering::Less
         } else if other.dominates(self) {
@@ -21,18 +24,30 @@ pub trait Dominate {
             Ordering::Equal
         }
     }
-
-    /// Returns true if `self` dominates `other`.
-
-    fn dominates(&self, other: &Self) -> bool {
-        match self.dominate(other) {
-            Ordering::Less => true,
-            _ => false,
-        }
-    }
 }
 
-type ArrayIndex = u32;
+/// Determines the domination between two items.
+///
+/// To apply probabilistic domination, we need `&mut self` here.
+
+pub trait Domination<T> {
+
+    /// If `lhs` dominates `rhs`, returns `Less`.
+    /// If `rhs` dominates `lhs`, returns `Greater`.
+    /// If neither `lhs` nor `rhs` dominates the other, returns `Equal`.
+
+    fn domination_ord(&mut self, lhs: &T, rhs: &T) -> Ordering;
+}
+
+/// Helpers struct that implements the Domination trait for any type `T : Dominate`.
+
+pub struct DominationHelper;
+
+impl<T: Dominate> Domination<T> for DominationHelper {
+    fn domination_ord(&mut self, lhs: &T, rhs: &T) -> Ordering {
+        lhs.domination_ord(rhs)
+    }
+}
 
 /// Perform a non dominated sort of `solutions`.
 ///
@@ -46,11 +61,11 @@ type ArrayIndex = u32;
 /// `domination(i, j)` or `domination(j, i)` is called, but never both. This is important for
 /// probabilistic dominance, where two calls could lead to different results.
 
-pub fn fast_non_dominated_sort<T, DOM>(solutions: &[T],
-                                       n: usize,
-                                       domination: &mut DOM)
-                                       -> Vec<Vec<usize>> // ArrayIndex
-    where DOM: FnMut(&T, &T) -> Ordering
+pub fn fast_non_dominated_sort<T, D>(solutions: &[T],
+                                     n: usize,
+                                     domination: &mut D)
+                                     -> Vec<Vec<usize>>
+    where D: Domination<T>
 {
     let mut fronts: Vec<Vec<usize>> = Vec::new();
     let mut current_front = Vec::new();
@@ -68,7 +83,7 @@ pub fn fast_non_dominated_sort<T, DOM>(solutions: &[T],
             let p = &solutions[i];
             let q = &solutions[j];
 
-            match domination(p, q) {
+            match domination.domination_ord(p, q) {
                 Ordering::Less => {
                     // p dominates q
                     // Add `q` to the set of solutions dominated by `p`.
@@ -124,13 +139,13 @@ pub fn fast_non_dominated_sort<T, DOM>(solutions: &[T],
 
 #[cfg(test)]
 mod tests {
-    use super::{fast_non_dominated_sort, Dominate};
+    use super::{fast_non_dominated_sort, Domination, Dominate, DominationHelper};
     use std::cmp::Ordering;
 
     struct T(u32, u32);
 
     impl Dominate for T {
-        fn dominate(&self, other: &Self) -> Ordering {
+        fn domination_ord(&self, other: &Self) -> Ordering {
             if self.0 < other.0 && self.1 <= other.1 {
                 return Ordering::Less;
             }
@@ -151,20 +166,18 @@ mod tests {
 
     #[test]
     fn test_dominate() {
-        assert_eq!(Ordering::Equal, T(1, 2).dominate(&T(1, 2)));
-        assert_eq!(Ordering::Equal, T(1, 2).dominate(&T(2, 1)));
-        assert_eq!(Ordering::Less, T(1, 2).dominate(&T(1, 3)));
-        assert_eq!(Ordering::Less, T(0, 2).dominate(&T(1, 2)));
-        assert_eq!(Ordering::Greater, T(1, 3).dominate(&T(1, 2)));
-        assert_eq!(Ordering::Greater, T(1, 2).dominate(&T(0, 2)));
+        assert_eq!(Ordering::Equal, T(1, 2).domination_ord(&T(1, 2)));
+        assert_eq!(Ordering::Equal, T(1, 2).domination_ord(&T(2, 1)));
+        assert_eq!(Ordering::Less, T(1, 2).domination_ord(&T(1, 3)));
+        assert_eq!(Ordering::Less, T(0, 2).domination_ord(&T(1, 2)));
+        assert_eq!(Ordering::Greater, T(1, 3).domination_ord(&T(1, 2)));
+        assert_eq!(Ordering::Greater, T(1, 2).domination_ord(&T(0, 2)));
     }
 
     #[test]
     fn test_non_dominated_sort() {
         let solutions = vec![T(1, 2), T(1, 2), T(2, 1), T(1, 3), T(0, 2)];
-        let fronts = fast_non_dominated_sort(&solutions,
-                                             solutions.len(),
-                                             &mut |a, b| a.dominate(b));
+        let fronts = fast_non_dominated_sort(&solutions, solutions.len(), &mut DominationHelper);
 
         assert_eq!(3, fronts.len());
         assert_eq!(&vec![2, 4], &fronts[0]);
