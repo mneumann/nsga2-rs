@@ -183,17 +183,33 @@ fn main() {
     };
 
     let driver_config = DriverConfig {
-        mu: 600, // size of population
-        lambda: 300, // size of offspring population
+        mu: 100, // size of population
+        lambda: 100, // size of offspring population
         k: 2, // tournament
-        ngen: 100, // max number of generations
+        ngen: 2, // max number of generations
         num_objectives: 2, // number of objectives
     };
 
     let final_population = driver.run(&mut rng, &driver_config, 1.0, &|_, _, _, _| {});
 
-    final_population.all(&mut|ind, fitness| {
-        println!("{:?}", ind);
-        println!("{:?}", fitness);
-    });
+    let max_rank = final_population.max_rank().unwrap();
+    for rank in 0 .. max_rank+1 {
+        println!("# front {}", rank);
+
+        println!("x\ty");
+        let mut xys = Vec::new();
+        final_population.all_of_rank(rank, &mut|_, fitness| {
+            xys.push((fitness.objectives[0], fitness.objectives[1]));
+        });
+
+        xys.sort_by(|a,b| a.0.partial_cmp(&b.0).unwrap());
+        for &(x, y) in xys.iter() {
+            println!("{:.3}\t{:.3}", x, y);
+        }
+    }
+
+    //println!("x\ty\tfront\tcrowding");
+    //final_population.all_with_rank_dist(&mut|_, fitness, rank, dist| {
+    //    println!("{:.3}\t{:.3}\t{}\t{:.4}", fitness.objectives[0], fitness.objectives[1], rank, dist);
+    //});
 }

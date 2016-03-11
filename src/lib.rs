@@ -387,11 +387,24 @@ impl<I, F> SelectedPopulation<I, F>
         }
     }
 
+    pub fn all_with_rank_dist<C>(&self, f: &mut C)
+        where C: FnMut(&I, &F, usize, f32)
+    {
+        for rd in self.rank_dist.iter() {
+            f(&self.individuals[rd.idx], &self.fitness[rd.idx], rd.rank as usize, rd.dist);
+        }
+    }
+
+
     // XXX: fitness_iter()
     pub fn fitness_to_vec(&self) -> Vec<F> {
         let mut v = Vec::new();
         self.all(&mut |_, f| v.push(f.clone()));
         v
+    }
+
+    pub fn max_rank(&self) -> Option<usize> {
+        self.rank_dist.iter().map(|rd| rd.rank).max().map(|r| r as usize)
     }
 
     pub fn all_of_rank<C>(&self, rank: usize, f: &mut C)
@@ -422,7 +435,7 @@ where I: Clone + Sync,
         (0..n).map(|_| self.random_individual(rng)).collect()
     }
     fn fitness(&self, ind: &I) -> F;
-    fn mate<R: Rng>(&self, rng: &mut R, p1: &I, p2: &I) -> I;
+    fn mate<R: Rng>(&self, rng: &mut R, parent1: &I, parent2: &I) -> I;
     fn is_solution(&self, _ind: &I, _fit: &F) -> bool {
         false
     }
