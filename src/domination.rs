@@ -49,7 +49,6 @@ impl<T: Dominate> Domination<T> for DominationHelper {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use sort::{fast_non_dominated_sort, FastNonDominatedSorter};

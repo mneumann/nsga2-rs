@@ -9,6 +9,8 @@ pub mod crowding_distance;
 pub mod population;
 pub mod driver;
 pub mod sort;
+pub mod prob;
+pub mod prob_domination;
 
 #[test]
 fn test_abc() {
