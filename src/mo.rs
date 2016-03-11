@@ -172,3 +172,22 @@ impl<T: MultiObjective> Dominate for T {
         return less_cnt > 0;
     }
 }
+
+#[test]
+fn test_dominates() {
+    let a = MultiObjective2::from((1.0f32, 0.1));
+    let b = MultiObjective2::from((0.1f32, 0.1));
+    let c = MultiObjective2::from((0.1f32, 1.0));
+
+    assert_eq!(false, a.dominates(&a));
+    assert_eq!(false, a.dominates(&b));
+    assert_eq!(false, a.dominates(&c));
+
+    assert_eq!(true, b.dominates(&a));
+    assert_eq!(false, b.dominates(&b));
+    assert_eq!(true, b.dominates(&c));
+
+    assert_eq!(false, c.dominates(&a));
+    assert_eq!(false, c.dominates(&b));
+    assert_eq!(false, c.dominates(&c));
+}
