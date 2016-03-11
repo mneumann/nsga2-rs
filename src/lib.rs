@@ -7,7 +7,7 @@ use rand::Rng;
 use selection::tournament_selection_fast;
 use mo::MultiObjective;
 pub use self::domination::{Domination, Dominate, DominationHelper};
-use domination::fast_non_dominated_sort;
+use domination::FastNonDominatedSorter;
 use rayon::par_iter::*;
 use std::convert::{AsRef, From};
 use std::iter::FromIterator;
@@ -20,6 +20,7 @@ mod crowding_distance;
 
 /// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
 /// objectives.
+
 fn select_solutions<T, D>(solutions: &[T],
                           n: usize,
                           num_objectives: usize,
@@ -30,13 +31,13 @@ fn select_solutions<T, D>(solutions: &[T],
 {
     let mut selection = Vec::with_capacity(cmp::min(solutions.len(), n));
 
-    let pareto_fronts = fast_non_dominated_sort(solutions, n, domination);
+    let pareto_fronts = FastNonDominatedSorter::new(solutions, domination);
 
-    for (rank, front) in pareto_fronts.iter().enumerate() {
+    for (rank, front) in pareto_fronts.enumerate() {
         if selection.len() >= n {
             break;
         }
-        let missing: usize = n - selection.len();
+        let missing = n - selection.len();
 
         let mut solution_rank_dist = crowding_distance_assignment(solutions,
                                                                   rank as u32,
@@ -436,6 +437,7 @@ fn test_dominates() {
 #[test]
 fn test_abc() {
     use mo::MultiObjective2;
+    use domination::fast_non_dominated_sort;
 
     let mut solutions: Vec<MultiObjective2<f32>> = Vec::new();
     solutions.push(MultiObjective2::from((1.0, 0.1)));
