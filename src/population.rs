@@ -1,4 +1,4 @@
-use domination::{Dominate, Domination};
+use domination::Domination;
 use multi_objective::MultiObjective;
 use crowding_distance::SolutionRankDist;
 use selection::select_solutions;
@@ -18,7 +18,7 @@ pub struct UnratedPopulation<I>
 /// each individual has a fitness assigned.
 pub struct RatedPopulation<I, F>
     where I: Clone,
-          F: Dominate + MultiObjective + Clone
+          F: MultiObjective + Clone
 {
     individuals: Vec<I>,
     fitness: Vec<F>,
@@ -27,7 +27,7 @@ pub struct RatedPopulation<I, F>
 /// A selected (ranked) Population.
 pub struct SelectedPopulation<I, F>
     where I: Clone,
-          F: Dominate + MultiObjective + Clone
+          F: MultiObjective + Clone
 {
     individuals: Vec<I>,
     fitness: Vec<F>,
@@ -77,7 +77,7 @@ impl<I> UnratedPopulation<I> where I: Clone + Sync
 
     /// Rate the individuals.
     pub fn rate<F, E>(self, eval: &E) -> RatedPopulation<I, F>
-        where F: Dominate + MultiObjective + Clone,
+        where F: MultiObjective + Clone,
               E: Fn(&I) -> F
     {
         let fitness = self.individuals.iter().map(eval).collect();
@@ -89,7 +89,7 @@ impl<I> UnratedPopulation<I> where I: Clone + Sync
 
     /// Rate the individuals in parallel.
     pub fn rate_in_parallel<F, E>(self, eval: &E, weight: f64) -> RatedPopulation<I, F>
-        where F: Dominate + MultiObjective + Clone + Send,
+        where F: MultiObjective + Clone + Send,
               E: Sync + Fn(&I) -> F
     {
         let mut fitness = Vec::new();
@@ -105,7 +105,7 @@ impl<I> UnratedPopulation<I> where I: Clone + Sync
 
 impl<I, F> RatedPopulation<I, F>
     where I: Clone,
-          F: Dominate + MultiObjective + Clone
+          F: MultiObjective + Clone
 {
     pub fn select<D>(self,
                      population_size: usize,
@@ -145,7 +145,7 @@ impl<I, F> RatedPopulation<I, F>
 
 impl<I, F> SelectedPopulation<I, F>
     where I: Clone,
-          F: Dominate + MultiObjective + Clone
+          F: MultiObjective + Clone
 {
     /// Generate an offspring population.
     /// XXX: Factor out selection into a separate Trait  SelectionMethod
