@@ -130,6 +130,10 @@ impl<I, F> RatedPopulation<I, F>
     pub fn fitness(&self) -> &[F] {
         &self.fitness
     }
+    pub fn fitness_mut(&mut self) -> &mut [F] {
+        &mut self.fitness
+    }
+
 }
 
 impl<I, F> SelectedPopulation<I, F>
