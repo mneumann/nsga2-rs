@@ -1,7 +1,7 @@
 use rand::Rng;
 use domination::{Dominate, Domination};
 use multi_objective::MultiObjective;
-use population::{UnratedPopulation, SelectedPopulation};
+use population::{UnratedPopulation, RatedPopulation, SelectedPopulation};
 use time;
 
 pub struct DriverConfig {
@@ -26,6 +26,10 @@ where I: Clone + Sync,
         false
     }
 
+    /// This can be used to update certain objectives in relation to the whole population.
+    fn population_metric(&self, _population: &mut RatedPopulation<I, F>) {
+    }
+
     fn run<R, D, L>(&self,
                     rng: &mut R,
                     config: &DriverConfig,
@@ -45,7 +49,9 @@ where I: Clone + Sync,
 
         loop {
             let rated_offspring = offspring.rate_in_parallel(&|ind| self.fitness(ind), weight);
-            let next_generation = parents.merge(rated_offspring);
+            let mut next_generation = parents.merge(rated_offspring);
+            // apply a population metric on the whole population
+            self.population_metric(&mut next_generation);
             parents = next_generation.select(config.mu, config.num_objectives, domination);
 
             let mut found_solutions = 0;
