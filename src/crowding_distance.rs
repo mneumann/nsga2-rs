@@ -68,7 +68,7 @@ pub fn crowding_distance_assignment<P: MultiObjective>(solutions: &[P],
             for i in 1..(l - 1) {
                 let next_idx = s[i + 1].idx;
                 let prev_idx = s[i - 1].idx;
-                let dist = solutions[next_idx].dist_objective(&solutions[prev_idx], m);
+                let dist = solutions[next_idx].dist_objective(&solutions[prev_idx], m).abs();
                 debug_assert!(dist >= 0.0);
                 s[i].dist += dist / norm;
             }
