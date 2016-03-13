@@ -75,19 +75,8 @@ impl<I> UnratedPopulation<I> where I: Clone + Sync
         self.individuals.len()
     }
 
-    /// Rate the individuals.
-    pub fn rate<F, E>(self, eval: &E) -> RatedPopulation<I, F>
-        where F: MultiObjective + Clone,
-              E: Fn(&I) -> F
-    {
-        let fitness = self.individuals.iter().map(eval).collect();
-        RatedPopulation {
-            individuals: self.individuals,
-            fitness: fitness,
-        }
-    }
-
     /// Rate the individuals in parallel.
+
     pub fn rate_in_parallel<F, E>(self, eval: &E, weight: f64) -> RatedPopulation<I, F>
         where F: MultiObjective + Clone + Send,
               E: Sync + Fn(&I) -> F
