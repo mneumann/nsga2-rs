@@ -10,6 +10,7 @@ pub struct DriverConfig {
     pub k: usize,
     pub ngen: usize,
     pub num_objectives: usize,
+    pub parallel_weight: f64,
 }
 
 pub trait Driver<I, F>: Sync
@@ -33,7 +34,6 @@ where I: Clone + Sync,
     fn run<R, D, L>(&self,
                     rng: &mut R,
                     config: &DriverConfig,
-                    weight: f64,
                     domination: &mut D,
                     logger: &L)
                     -> SelectedPopulation<I, F>
@@ -48,7 +48,7 @@ where I: Clone + Sync,
         let mut gen: usize = 0;
 
         loop {
-            let rated_offspring = offspring.rate_in_parallel(&|ind| self.fitness(ind), weight);
+            let rated_offspring = offspring.rate_in_parallel(&|ind| self.fitness(ind), config.parallel_weight);
             let mut next_generation = parents.merge(rated_offspring);
             // apply a population metric on the whole population
             self.population_metric(&mut next_generation);

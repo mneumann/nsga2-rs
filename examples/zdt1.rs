@@ -188,9 +188,10 @@ fn main() {
         k: 2, // tournament
         ngen: 2, // max number of generations
         num_objectives: 2, // number of objectives
+        parallel_weight: 1.0, // rayon's weight
     };
 
-    let final_population = driver.run(&mut rng, &driver_config, 1.0, &mut DominationHelper, &|_, _, _, _| {});
+    let final_population = driver.run(&mut rng, &driver_config, &mut DominationHelper, &|_, _, _, _| {});
 
     let max_rank = final_population.max_rank().unwrap();
     for rank in 0..max_rank + 1 {
