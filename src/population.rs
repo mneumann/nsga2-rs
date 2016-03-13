@@ -9,7 +9,7 @@ use rand::Rng;
 
 /// An unrated Population of individuals.
 pub struct UnratedPopulation<I>
-    where I: Clone + Sync
+    where I: Clone
 {
     individuals: Vec<I>,
 }
@@ -17,8 +17,8 @@ pub struct UnratedPopulation<I>
 /// A rated Population of individuals, i.e.
 /// each individual has a fitness assigned.
 pub struct RatedPopulation<I, F>
-    where I: Clone + Sync,
-          F: MultiObjective + Clone + Sync
+    where I: Clone,
+          F: MultiObjective + Clone
 {
     individuals: Vec<I>,
     fitness: Vec<F>,
@@ -26,22 +26,22 @@ pub struct RatedPopulation<I, F>
 
 /// A selected (ranked) Population.
 pub struct SelectedPopulation<I, F>
-    where I: Clone + Sync,
-          F: MultiObjective + Clone + Sync
+    where I: Clone,
+          F: MultiObjective + Clone
 {
     individuals: Vec<I>,
     fitness: Vec<F>,
     rank_dist: Vec<SolutionRankDist>,
 }
 
-impl<I> From<Vec<I>> for UnratedPopulation<I> where I: Clone + Sync
+impl<I> From<Vec<I>> for UnratedPopulation<I> where I: Clone
 {
     fn from(v: Vec<I>) -> UnratedPopulation<I> {
         UnratedPopulation { individuals: v }
     }
 }
 
-impl<I> FromIterator<I> for UnratedPopulation<I> where I: Clone + Sync
+impl<I> FromIterator<I> for UnratedPopulation<I> where I: Clone
 {
     fn from_iter<T>(iterator: T) -> UnratedPopulation<I>
         where T: IntoIterator<Item = I>
@@ -50,7 +50,7 @@ impl<I> FromIterator<I> for UnratedPopulation<I> where I: Clone + Sync
     }
 }
 
-impl<I> AsRef<[I]> for UnratedPopulation<I> where I: Clone + Sync
+impl<I> AsRef<[I]> for UnratedPopulation<I> where I: Clone
 {
     fn as_ref(&self) -> &[I] {
         &self.individuals
@@ -78,7 +78,7 @@ impl<I> UnratedPopulation<I> where I: Clone + Sync
     /// Rate the individuals in parallel.
 
     pub fn rate_in_parallel<F, E>(self, eval: &E, weight: f64) -> RatedPopulation<I, F>
-        where F: MultiObjective + Clone + Send + Sync,
+        where F: MultiObjective + Clone + Send,
               E: Sync + Fn(&I) -> F
     {
         let mut fitness = Vec::new();
@@ -93,33 +93,9 @@ impl<I> UnratedPopulation<I> where I: Clone + Sync
 }
 
 impl<I, F> RatedPopulation<I, F>
-    where I: Clone + Sync,
-          F: MultiObjective + Clone + Sync
+    where I: Clone,
+          F: MultiObjective + Clone
 {
-    /// Maps the fitness `F` to a fitness `G`. The evaluator function
-    /// gets called with the old `RatedPopulation<I,F>` as first argument,
-    /// so the evaluation can be based upon the old population (e.g. this is
-    /// used by HyperNSGA to determine the behavioral diversity which is
-    /// a population measure).
-
-    pub fn map_fitness<E, G>(self, eval: &E, weight: f64) -> RatedPopulation<I, G>
-        where E: Sync + Fn(&RatedPopulation<I, F>, usize) -> G,
-              G: MultiObjective + Clone + Send + Sync
-    {
-        let mut new_fitness = Vec::new();
-        (0..self.individuals.len())
-            .into_par_iter()
-            .map(|i| eval(&self, i))
-            .weight(weight)
-            .collect_into(&mut new_fitness);
-        assert!(new_fitness.len() == self.individuals.len());
-
-        RatedPopulation {
-            individuals: self.individuals,
-            fitness: new_fitness,
-        }
-    }
-
     pub fn select<D>(self,
                      population_size: usize,
                      num_objectives: usize,
@@ -157,8 +133,8 @@ impl<I, F> RatedPopulation<I, F>
 }
 
 impl<I, F> SelectedPopulation<I, F>
-    where I: Clone + Sync,
-          F: MultiObjective + Clone + Sync
+    where I: Clone,
+          F: MultiObjective + Clone
 {
     /// Generate an offspring population.
     /// XXX: Factor out selection into a separate Trait  SelectionMethod

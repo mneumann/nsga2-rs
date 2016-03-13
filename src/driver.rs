@@ -14,7 +14,7 @@ pub struct DriverConfig {
 
 pub trait Driver<I, F>: Sync
 where I: Clone + Sync,
-      F: Dominate + MultiObjective + Clone + Send + Sync
+      F: Dominate + MultiObjective + Clone + Send
 {
     fn random_individual<R: Rng>(&self, rng: &mut R) -> I;
     fn random_population<R: Rng>(&self, rng: &mut R, n: usize) -> UnratedPopulation<I> {
@@ -46,7 +46,6 @@ where I: Clone + Sync,
         loop {
             let rated_offspring = offspring.rate_in_parallel(&|ind| self.fitness(ind), weight);
             let next_generation = parents.merge(rated_offspring);
-            // XXX: apply population metric
             parents = next_generation.select(config.mu, config.num_objectives, domination);
 
             let mut found_solutions = 0;
