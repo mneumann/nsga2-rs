@@ -13,22 +13,23 @@ pub struct DriverConfig {
     pub parallel_weight: f64,
 }
 
-pub trait Driver<I, F>: Sync
-where I: Clone + Sync,
-      F: Dominate + MultiObjective + Clone + Send
+pub trait Driver: Sync
 {
-    fn random_individual<R: Rng>(&self, rng: &mut R) -> I;
-    fn random_population<R: Rng>(&self, rng: &mut R, n: usize) -> UnratedPopulation<I> {
+    type IND: Clone + Sync;
+    type FIT: Dominate + MultiObjective + Clone + Send;
+
+    fn random_individual<R>(&self, rng: &mut R) -> Self::IND where R: Rng;
+    fn random_population<R>(&self, rng: &mut R, n: usize) -> UnratedPopulation<Self::IND> where R: Rng {
         (0..n).map(|_| self.random_individual(rng)).collect()
     }
-    fn fitness(&self, ind: &I) -> F;
-    fn mate<R: Rng>(&self, rng: &mut R, parent1: &I, parent2: &I) -> I;
-    fn is_solution(&self, _ind: &I, _fit: &F) -> bool {
+    fn fitness(&self, ind: &Self::IND) -> Self::FIT;
+    fn mate<R>(&self, rng: &mut R, parent1: &Self::IND, parent2: &Self::IND) -> Self::IND where R: Rng;
+    fn is_solution(&self, _ind: &Self::IND, _fit: &Self::FIT) -> bool {
         false
     }
 
     /// This can be used to update certain objectives in relation to the whole population.
-    fn population_metric(&self, _population: &mut RatedPopulation<I, F>) {
+    fn population_metric(&self, _population: &mut RatedPopulation<Self::IND, Self::FIT>) {
     }
 
     fn run<R, D, L>(&self,
@@ -36,14 +37,14 @@ where I: Clone + Sync,
                     config: &DriverConfig,
                     domination: &mut D,
                     logger: &L)
-                    -> SelectedPopulation<I, F>
+                    -> SelectedPopulation<Self::IND, Self::FIT>
         where R: Rng,
-              D: Domination<F>,
-              L: Fn(usize, u64, usize, &SelectedPopulation<I, F>)
+              D: Domination<Self::FIT>,
+              L: Fn(usize, u64, usize, &SelectedPopulation<Self::IND, Self::FIT>)
     {
         // this is generation 0. it's empty
         let mut time_last = time::precise_time_ns();
-        let mut parents = SelectedPopulation::<I, F>::new();
+        let mut parents = SelectedPopulation::<Self::IND, Self::FIT>::new();
         let mut offspring = self.random_population(rng, config.mu);
         let mut gen: usize = 0;
 

@@ -160,16 +160,19 @@ struct ZdtDriver {
     mating_eta: f32,
 }
 
-impl Driver<ZdtGenome, MultiObjective2<f32>> for ZdtDriver {
-    fn random_individual<R: Rng>(&self, rng: &mut R) -> ZdtGenome {
+impl Driver for ZdtDriver {
+    type IND = ZdtGenome;
+    type FIT = MultiObjective2<f32>;
+
+    fn random_individual<R>(&self, rng: &mut R) -> Self::IND where R: Rng{
         ZdtGenome::random(rng, self.zdt_order)
     }
 
-    fn fitness(&self, ind: &ZdtGenome) -> MultiObjective2<f32> {
+    fn fitness(&self, ind: &Self::IND) -> Self::FIT {
         ind.fitness()
     }
 
-    fn mate<R: Rng>(&self, rng: &mut R, parent1: &ZdtGenome, parent2: &ZdtGenome) -> ZdtGenome {
+    fn mate<R>(&self, rng: &mut R, parent1: &Self::IND, parent2: &Self::IND) -> ZdtGenome where R: Rng{
         ZdtGenome::crossover1(rng, (parent1, parent2), self.mating_eta)
     }
 }
