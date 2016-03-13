@@ -19,7 +19,7 @@ pub trait Driver: Sync
     type FIT: Dominate + MultiObjective + Clone + Send;
 
     fn random_individual<R>(&self, rng: &mut R) -> Self::IND where R: Rng;
-    fn random_population<R>(&self, rng: &mut R, n: usize) -> UnratedPopulation<Self::IND> where R: Rng {
+    fn initial_population<R>(&self, rng: &mut R, n: usize) -> UnratedPopulation<Self::IND> where R: Rng {
         (0..n).map(|_| self.random_individual(rng)).collect()
     }
     fn fitness(&self, ind: &Self::IND) -> Self::FIT;
@@ -45,7 +45,8 @@ pub trait Driver: Sync
         // this is generation 0. it's empty
         let mut time_last = time::precise_time_ns();
         let mut parents = SelectedPopulation::<Self::IND, Self::FIT>::new();
-        let mut offspring = self.random_population(rng, config.mu);
+        let mut offspring = self.initial_population(rng, config.mu);
+        assert!(offspring.len() == config.mu);
         let mut gen: usize = 0;
 
         loop {
