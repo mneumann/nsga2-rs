@@ -19,7 +19,8 @@ pub struct MultiObjective2<T>
     pub objectives: [T; 2],
 }
 
-impl<T> From<(T, T)> for MultiObjective2<T> where T: Sized + PartialOrd + Copy + Clone + Send
+impl<T> From<(T, T)> for MultiObjective2<T>
+    where T: Sized + PartialOrd + Copy + Clone + Send
 {
     #[inline]
     fn from(t: (T, T)) -> MultiObjective2<T> {
@@ -28,7 +29,8 @@ impl<T> From<(T, T)> for MultiObjective2<T> where T: Sized + PartialOrd + Copy +
 }
 
 impl<T, R> MultiObjective for MultiObjective2<T>
-    where T: Copy + PartialOrd + Sub<Output = R> + Send, R: Into<f64>
+    where T: Copy + PartialOrd + Sub<Output = R> + Send,
+          R: Into<f64>
 {
     #[inline]
     fn num_objectives(&self) -> usize {
@@ -92,7 +94,9 @@ pub struct MultiObjective4<T>
     pub objectives: [T; 4],
 }
 
-impl<T> From<(T, T, T, T)> for MultiObjective4<T> where T: Sized + PartialOrd + Copy + Clone + Send {
+impl<T> From<(T, T, T, T)> for MultiObjective4<T>
+    where T: Sized + PartialOrd + Copy + Clone + Send
+{
     #[inline]
     fn from(t: (T, T, T, T)) -> MultiObjective4<T> {
         MultiObjective4 { objectives: [t.0, t.1, t.2, t.3] }
@@ -124,14 +128,18 @@ pub struct MultiObjectiveVec<T>
     objectives: Vec<T>,
 }
 
-impl<T> From<Vec<T>> for MultiObjectiveVec<T> where T: Sized + PartialOrd + Copy + Clone + Send {
+impl<T> From<Vec<T>> for MultiObjectiveVec<T>
+    where T: Sized + PartialOrd + Copy + Clone + Send
+{
     #[inline]
     fn from(t: Vec<T>) -> MultiObjectiveVec<T> {
         MultiObjectiveVec { objectives: t }
     }
 }
 
-impl<T> AsRef<[T]> for MultiObjectiveVec<T> where T: Sized + PartialOrd + Copy + Clone + Send {
+impl<T> AsRef<[T]> for MultiObjectiveVec<T>
+    where T: Sized + PartialOrd + Copy + Clone + Send
+{
     fn as_ref(&self) -> &[T] {
         &self.objectives
     }
@@ -155,21 +163,30 @@ impl<T, R> MultiObjective for MultiObjectiveVec<T>
     }
 }
 
-impl<T: MultiObjective> Domination for T {
-    fn dominates(&self, other: &Self) -> bool {
-        let mut less_cnt = 0;
-        for i in 0..cmp::min(self.num_objectives(), other.num_objectives()) {
-            match self.cmp_objective(other, i) {
-                Ordering::Greater => {
-                    return false;
-                }
-                Ordering::Less => {
-                    less_cnt += 1;
-                }
-                Ordering::Equal => {}
+pub fn dominates_helper<T>(lhs: &T, rhs: &T) -> bool
+    where T: MultiObjective
+{
+    let mut less_cnt = 0;
+    for i in 0..cmp::min(lhs.num_objectives(), rhs.num_objectives()) {
+        match lhs.cmp_objective(rhs, i) {
+            Ordering::Greater => {
+                return false;
             }
+            Ordering::Less => {
+                less_cnt += 1;
+            }
+            Ordering::Equal => {}
         }
-        return less_cnt > 0;
+    }
+    return less_cnt > 0;
+}
+
+impl<T, R> Domination for MultiObjective2<T>
+    where T: Copy + PartialOrd + Sub<Output = R> + Send,
+          R: Into<f64>
+{
+    fn dominates(&self, other: &Self) -> bool {
+        dominates_helper(self, other)
     }
 }
 
