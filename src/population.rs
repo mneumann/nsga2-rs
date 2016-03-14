@@ -63,6 +63,13 @@ impl<G, F> Individual<G, F> where F: MultiObjective, G: Send {
             selected: false,
         }
     }
+
+    pub fn fitness(&self) -> &F {
+        self.fitness.as_ref().unwrap()
+    }
+    pub fn fitness_mut(&mut self) -> &mut F {
+        self.fitness.as_mut().unwrap()
+    }
 }
 
 /// An unrated Population of individuals.
@@ -271,6 +278,9 @@ impl<G, F> RankedPopulation<G, F> where F: MultiObjective, G: Send
         }
     }
 
+    pub fn individuals(&self) -> &[Individual<G, F>] {
+        &self.individuals
+    }
 
 /*
 
