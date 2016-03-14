@@ -8,13 +8,11 @@ use std::cmp::{self, Ordering};
 /// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
 /// objectives.
 
-pub fn select_solutions<T, F, D>(solutions: &mut [T],
-                                 select_n: usize,
-                                 num_objectives: usize,
-                                 domination: &mut D)
+pub fn select_solutions<T, F>(solutions: &mut [T],
+                              select_n: usize,
+                              num_objectives: usize)
     where T: CrowdingDistanceAssignment<F>,
-          F: MultiObjective,
-          D: Domination<F>
+          F: MultiObjective + Domination,
 {
     // We can select at most `select_n` solutions.
     let mut missing = cmp::min(solutions.len(), select_n);
@@ -24,7 +22,7 @@ pub fn select_solutions<T, F, D>(solutions: &mut [T],
         s.unselect();
     }
 
-    let pareto_fronts = FastNonDominatedSorter::new(solutions, &|s| s.fitness(), domination);
+    let pareto_fronts = FastNonDominatedSorter::new(solutions, &|s| s.fitness());
 
     for (rank, mut front) in pareto_fronts.enumerate() {
         assert!(missing > 0);

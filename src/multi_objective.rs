@@ -1,7 +1,7 @@
 use std::cmp::{self, Ordering};
 use std::ops::Sub;
 use std::convert::From;
-use domination::Dominate;
+use domination::Domination;
 
 pub trait MultiObjective: Send {
     fn num_objectives(&self) -> usize;
@@ -155,7 +155,7 @@ impl<T, R> MultiObjective for MultiObjectiveVec<T>
     }
 }
 
-impl<T: MultiObjective> Dominate for T {
+impl<T: MultiObjective> Domination for T {
     fn dominates(&self, other: &Self) -> bool {
         let mut less_cnt = 0;
         for i in 0..cmp::min(self.num_objectives(), other.num_objectives()) {

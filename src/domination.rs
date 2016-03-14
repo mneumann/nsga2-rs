@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 /// The dominance relation between two items.
 
-pub trait Dominate {
+pub trait Domination {
 
     /// Returns true if `self` dominates `other`.
 
@@ -26,38 +26,15 @@ pub trait Dominate {
     }
 }
 
-/// Determines the domination between two items.
-///
-/// To apply probabilistic domination, we need `&mut self` here.
-
-pub trait Domination<T> {
-
-    /// If `lhs` dominates `rhs`, returns `Less`.
-    /// If `rhs` dominates `lhs`, returns `Greater`.
-    /// If neither `lhs` nor `rhs` dominates the other, returns `Equal`.
-
-    fn domination_ord(&mut self, lhs: &T, rhs: &T) -> Ordering;
-}
-
-/// Helpers struct that implements the Domination trait for any type `T : Dominate`.
-
-pub struct DominationHelper;
-
-impl<T: Dominate> Domination<T> for DominationHelper {
-    fn domination_ord(&mut self, lhs: &T, rhs: &T) -> Ordering {
-        lhs.domination_ord(rhs)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use sort::{fast_non_dominated_sort, FastNonDominatedSorter};
-    use super::{Domination, Dominate, DominationHelper};
+    use super::Domination;
     use std::cmp::Ordering;
 
     struct T(u32, u32);
 
-    impl Dominate for T {
+    impl Domination for T {
         fn domination_ord(&self, other: &Self) -> Ordering {
             if self.0 < other.0 && self.1 <= other.1 {
                 return Ordering::Less;
@@ -90,7 +67,7 @@ mod tests {
     #[test]
     fn test_non_dominated_sort() {
         let solutions = vec![T(1, 2), T(1, 2), T(2, 1), T(1, 3), T(0, 2)];
-        let fronts = fast_non_dominated_sort(&solutions, solutions.len(), &mut DominationHelper);
+        let fronts = fast_non_dominated_sort(&solutions, solutions.len());
 
         assert_eq!(3, fronts.len());
         assert_eq!(&vec![2, 4], &fronts[0]);
@@ -101,7 +78,7 @@ mod tests {
     #[test]
     fn test_non_dominated_sort_iter() {
         let solutions = vec![T(1, 2), T(1, 2), T(2, 1), T(1, 3), T(0, 2)];
-        let mut fronts = FastNonDominatedSorter::new(&solutions, &|s| s, &mut DominationHelper);
+        let mut fronts = FastNonDominatedSorter::new(&solutions, &|s| s);
 
         assert_eq!(Some(vec![2, 4]), fronts.next());
         assert_eq!(Some(vec![0, 1]), fronts.next());

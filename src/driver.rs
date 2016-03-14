@@ -1,5 +1,5 @@
 use rand::Rng;
-use domination::{Dominate, Domination};
+use domination::Domination;
 use multi_objective::MultiObjective;
 use population::{UnratedPopulation, RatedPopulation, RankedPopulation};
 use time;
@@ -15,8 +15,8 @@ pub struct DriverConfig {
 
 pub trait Driver: Sync
 {
-    type GENOME: Clone + Sync + Send;
-    type FIT: Dominate + MultiObjective + Clone + Send;
+    type GENOME: Clone + Sync + Send; // XXX: clone?
+    type FIT: MultiObjective + Domination + Clone + Send; // XXX: clone?
 
     fn random_genome<R>(&self, rng: &mut R) -> Self::GENOME where R: Rng;
     fn initial_population<R>(&self, rng: &mut R, n: usize) -> UnratedPopulation<Self::GENOME, Self::FIT> where R: Rng {
@@ -38,14 +38,12 @@ pub trait Driver: Sync
     fn population_metric(&self, _population: &mut RatedPopulation<Self::GENOME, Self::FIT>) {
     }
 
-    fn run<R, D, L>(&self,
-                    rng: &mut R,
-                    config: &DriverConfig,
-                    domination: &mut D,
-                    logger: &L)
-                    -> RankedPopulation<Self::GENOME, Self::FIT>
+    fn run<R, L>(&self,
+                 rng: &mut R,
+                 config: &DriverConfig,
+                 logger: &L)
+                 -> RankedPopulation<Self::GENOME, Self::FIT>
         where R: Rng,
-              D: Domination<Self::FIT>,
               L: Fn(usize, u64, usize, &RankedPopulation<Self::GENOME, Self::FIT>)
     {
         // this is generation 0. it's empty
@@ -60,7 +58,7 @@ pub trait Driver: Sync
             let mut next_generation = parents.merge(rated_offspring);
             // apply a population metric on the whole population
             self.population_metric(&mut next_generation);
-            parents = next_generation.select(config.mu, config.num_objectives, domination);
+            parents = next_generation.select(config.mu, config.num_objectives);
 
             let mut found_solutions = 0;
             parents.all(&mut |ind, fit| {

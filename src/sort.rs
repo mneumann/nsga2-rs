@@ -12,15 +12,10 @@ impl FastNonDominatedSorter {
     /// Perform a non dominated sort of `solutions`.
     ///
     /// Each pareto front (the indices of the `solutions`) can be obtained by calling `next()`.
-    ///
-    /// It is guaranteed that `domination` is exactly called once (and no more than once) for every
-    /// unordered pair of solutions. That is, for two distinct solutions` i` and `j` either
-    /// `domination(i, j)` or `domination(j, i)` is called, but never both. This is important for
-    /// probabilistic dominance, where two calls could lead to different results.
 
-    pub fn new<T, FIT, MAP, DOM>(solutions: &[T], map: &MAP, domination: &mut DOM) -> Self
+    pub fn new<T, FIT, MAP>(solutions: &[T], map: &MAP) -> Self
         where MAP: Fn(&T) -> &FIT,
-              DOM: Domination<FIT>
+              FIT: Domination
     {
         let mut current_front = Vec::new();
         let mut domination_count: Vec<usize> = solutions.iter()
@@ -36,7 +31,7 @@ impl FastNonDominatedSorter {
                 let p = &solutions[i];
                 let q = &solutions[j];
 
-                match domination.domination_ord(map(p), map(q)) {
+                match map(p).domination_ord(map(q)) {
                     Ordering::Less => {
                         // p dominates q
                         // Add `q` to the set of solutions dominated by `p`.
@@ -52,7 +47,7 @@ impl FastNonDominatedSorter {
                         // Increment domination counter of `p`.
                         domination_count[i] += 1;
                     }
-                    _ => {}
+                    Ordering::Equal => {}
                 }
             }
 
@@ -88,6 +83,7 @@ impl Iterator for FastNonDominatedSorter {
         let mut next_front = Vec::new();
         for &p_i in self.current_front.iter() {
             for &q_i in self.dominated_solutions[p_i].iter() {
+                debug_assert!(self.domination_count[q_i] > 0);
                 self.domination_count[q_i] -= 1;
                 if self.domination_count[q_i] == 0 {
                     // q belongs to the next front
@@ -104,13 +100,12 @@ impl Iterator for FastNonDominatedSorter {
     }
 }
 
-pub fn fast_non_dominated_sort<T, D>(solutions: &[T],
-                                     n: usize,
-                                     domination: &mut D)
-                                     -> Vec<Vec<usize>>
-    where D: Domination<T>
+pub fn fast_non_dominated_sort<T>(solutions: &[T],
+                                  n: usize)
+                                  -> Vec<Vec<usize>>
+    where T: Domination
 {
-    let sorter = FastNonDominatedSorter::new(solutions, &|f| f, domination);
+    let sorter = FastNonDominatedSorter::new(solutions, &|f| f);
     let mut found_solutions: usize = 0;
     let mut fronts = Vec::new();
 

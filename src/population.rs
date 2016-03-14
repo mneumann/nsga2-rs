@@ -7,7 +7,7 @@ use selection::tournament_selection_fast;
 use rand::Rng;
 use std::u32;
 
-pub struct Individual<G, F> where F: MultiObjective, G: Send
+pub struct Individual<G, F> where F: MultiObjective + Domination, G: Send
 {
     genome: G,
 
@@ -24,7 +24,7 @@ pub struct Individual<G, F> where F: MultiObjective, G: Send
     selected: bool,
 }
 
-impl<G, F> CrowdingDistanceAssignment<F> for Individual<G, F> where F: MultiObjective, G: Send {
+impl<G, F> CrowdingDistanceAssignment<F> for Individual<G, F> where F: MultiObjective + Domination, G: Send {
     fn fitness(&self) -> &F {
         self.fitness.as_ref().unwrap()
     }
@@ -53,7 +53,7 @@ impl<G, F> CrowdingDistanceAssignment<F> for Individual<G, F> where F: MultiObje
     }
 }
 
-impl<G, F> Individual<G, F> where F: MultiObjective, G: Send {
+impl<G, F> Individual<G, F> where F: MultiObjective + Domination, G: Send {
     fn from_genome(genome: G) -> Self {
         Individual {
             genome: genome,
@@ -74,26 +74,26 @@ impl<G, F> Individual<G, F> where F: MultiObjective, G: Send {
 
 /// An unrated Population of individuals.
 
-pub struct UnratedPopulation<G, F> where F: MultiObjective, G: Send
+pub struct UnratedPopulation<G, F> where F: MultiObjective + Domination, G: Send
 {
     individuals: Vec<Individual<G, F>>,
 }
 
 /// A rated Population of individuals, i.e. each individual has a fitness assigned.
 
-pub struct RatedPopulation<G, F> where F: MultiObjective, G: Send
+pub struct RatedPopulation<G, F> where F: MultiObjective + Domination, G: Send
 {
     individuals: Vec<Individual<G, F>>,
 }
 
 /// A ranked (selected) Population (pareto_rank and crowding_distance).
 
-pub struct RankedPopulation<G, F> where F: MultiObjective, G: Send
+pub struct RankedPopulation<G, F> where F: MultiObjective + Domination, G: Send
 {
     individuals: Vec<Individual<G, F>>,
 }
 
-impl<G, F> UnratedPopulation<G, F> where F: MultiObjective, G: Send
+impl<G, F> UnratedPopulation<G, F> where F: MultiObjective + Domination, G: Send
 {
     pub fn individuals(&self) -> &[Individual<G, F>] {
         &self.individuals
@@ -130,22 +130,19 @@ impl<G, F> UnratedPopulation<G, F> where F: MultiObjective, G: Send
     }
 }
 
-impl<G, F> RatedPopulation<G, F> where F: MultiObjective, G: Send
+impl<G, F> RatedPopulation<G, F> where F: MultiObjective + Domination, G: Send
 {
-    pub fn select<D>(self,
-                     population_size: usize,
-                     num_objectives: usize,
-                     domination: &mut D)
-                     -> RankedPopulation<G, F>
-        where D: Domination<F>
+    pub fn select(self,
+                  population_size: usize,
+                  num_objectives: usize)
+                  -> RankedPopulation<G, F>
     {
         let RatedPopulation { mut individuals } = self;
 
         // evaluate rank and crowding distance
         select_solutions(&mut individuals,
                          population_size,
-                         num_objectives,
-                         domination);
+                         num_objectives);
 
         // only keep individuals which are selected
         individuals.retain(|i| i.is_selected());
@@ -176,7 +173,7 @@ impl<G, F> RatedPopulation<G, F> where F: MultiObjective, G: Send
     }
 }
 
-impl<G, F> RankedPopulation<G, F> where F: MultiObjective, G: Send
+impl<G, F> RankedPopulation<G, F> where F: MultiObjective + Domination, G: Send
 {
     /// Generate an unrated offspring population.
     /// XXX: Factor out selection into a separate Trait  SelectionMethod
@@ -281,27 +278,4 @@ impl<G, F> RankedPopulation<G, F> where F: MultiObjective, G: Send
     pub fn individuals(&self) -> &[Individual<G, F>] {
         &self.individuals
     }
-
-/*
-
-    pub fn all_with_rank_dist<C>(&self, f: &mut C)
-        where C: FnMut(&I, &F, usize, f64)
-    {
-        for rd in self.rank_dist.iter() {
-            f(&self.individuals[rd.idx],
-              &self.fitness[rd.idx],
-              rd.rank as usize,
-              rd.dist);
-        }
-    }
-
-
-    // XXX: fitness_iter()
-    pub fn fitness_to_vec(&self) -> Vec<F> {
-        let mut v = Vec::new();
-        self.all(&mut |_, f| v.push(f.clone()));
-        v
-    }
-
-    */
 }

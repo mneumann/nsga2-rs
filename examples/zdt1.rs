@@ -6,7 +6,6 @@ extern crate nsga2;
 use rand::{Rng, Closed01};
 use nsga2::driver::{Driver, DriverConfig};
 use nsga2::multi_objective::MultiObjective2;
-use nsga2::domination::DominationHelper;
 
 /// optimal pareto front (f_1, 1 - sqrt(f_1))
 /// 0 <= x[i] <= 1.0
@@ -194,7 +193,7 @@ fn main() {
         parallel_weight: 1.0, // rayon's weight
     };
 
-    let final_population = driver.run(&mut rng, &driver_config, &mut DominationHelper, &|_, _, _, _| {});
+    let final_population = driver.run(&mut rng, &driver_config, &|_, _, _, _| {});
 
     let max_rank = final_population.max_rank().unwrap();
     for rank in 0..max_rank + 1 {
