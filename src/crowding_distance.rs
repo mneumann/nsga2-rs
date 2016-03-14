@@ -61,7 +61,7 @@ pub fn crowding_distance_assignment<P: MultiObjective>(solutions: &[P],
         let min_idx = s[0].idx;
         let max_idx = s[l - 1].idx;
 
-        let dist_max_min = solutions[max_idx].dist_objective(&solutions[min_idx], m);
+        let dist_max_min = solutions[max_idx].dist_objective(&solutions[min_idx], m).abs();
         if dist_max_min != 0.0 {
             let norm = num_objectives as f32 * dist_max_min;
             debug_assert!(norm != 0.0);
