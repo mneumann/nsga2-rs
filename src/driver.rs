@@ -38,6 +38,22 @@ pub trait Driver: Sync
     fn population_metric(&self, _population: &mut RatedPopulation<Self::GENOME, Self::FIT>) {
     }
 
+    /// This method is called for each fitness value for every new generation, before ranking and
+    /// crowding is calculated, and can be used to probabilistically select those objectives 
+    /// that should be used for dominance.
+    ///
+    /// XXX: For crowding distance, we should also omit those objectives?
+
+    fn probabilistic_objective_selection<R>(&self, _fitness: &mut Self::FIT, _rng: &mut R) where R: Rng {
+    }
+
+    fn probabilistic_objective_selection_population<R>(&self, population: &mut RatedPopulation<Self::GENOME, Self::FIT>, rng: &mut R) where R: Rng {
+        for ind in population.individuals_mut().iter_mut() {
+            self.probabilistic_objective_selection(ind.fitness_mut(), rng);
+        }
+    }
+
+
     fn run<R, L>(&self,
                  rng: &mut R,
                  config: &DriverConfig,
@@ -58,6 +74,9 @@ pub trait Driver: Sync
             let mut next_generation = parents.merge(rated_offspring);
             // apply a population metric on the whole population
             self.population_metric(&mut next_generation);
+
+            self.probabilistic_objective_selection_population(&mut next_generation, rng);
+
             parents = next_generation.select(config.mu, config.num_objectives);
 
             let mut found_solutions = 0;

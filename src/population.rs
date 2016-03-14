@@ -154,6 +154,10 @@ impl<G, F> RatedPopulation<G, F> where F: MultiObjective + Domination, G: Send
         }
     }
 
+    pub fn individuals_mut(&mut self) -> &mut [Individual<G, F>] {
+        &mut self.individuals
+    }
+
     pub fn new() -> Self {
         RatedPopulation {
             individuals: Vec::new(),
