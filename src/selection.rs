@@ -47,6 +47,7 @@ pub fn select_solutions<T, D>(solutions: &[T],
         }
     }
 
+    assert!(selection.len() == cmp::min(solutions.len(), n));
     return selection;
 }
 
