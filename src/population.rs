@@ -241,7 +241,7 @@ impl<I, F> SelectedPopulation<I, F>
     }
 
     pub fn all_with_rank_dist<C>(&self, f: &mut C)
-        where C: FnMut(&I, &F, usize, f32)
+        where C: FnMut(&I, &F, usize, f64)
     {
         for rd in self.rank_dist.iter() {
             f(&self.individuals[rd.idx],

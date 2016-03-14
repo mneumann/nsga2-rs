@@ -9,7 +9,7 @@ pub trait MultiObjective {
     fn cmp_objective(&self, other: &Self, objective: usize) -> Ordering;
 
     /// Calculates the distance of objective between self and other
-    fn dist_objective(&self, other: &Self, objective: usize) -> f32;
+    fn dist_objective(&self, other: &Self, objective: usize) -> f64;
 }
 
 #[derive(Debug, Clone)]
@@ -28,7 +28,7 @@ impl<T: Sized + PartialOrd + Copy + Clone> From<(T, T)> for MultiObjective2<T> {
 
 impl<T, R> MultiObjective for MultiObjective2<T>
     where T: Copy + PartialOrd + Sub<Output = R>,
-          R: Into<f32>
+          R: Into<f64>
 {
     #[inline]
     fn num_objectives(&self) -> usize {
@@ -39,7 +39,7 @@ impl<T, R> MultiObjective for MultiObjective2<T>
         self.objectives[objective].partial_cmp(&other.objectives[objective]).unwrap()
     }
     #[inline]
-    fn dist_objective(&self, other: &Self, objective: usize) -> f32 {
+    fn dist_objective(&self, other: &Self, objective: usize) -> f64 {
         (self.objectives[objective] - other.objectives[objective]).into()
     }
 }
@@ -69,7 +69,7 @@ impl<T, I> From<I> for MultiObjective3<T>
 
 impl<T, R> MultiObjective for MultiObjective3<T>
     where T: Copy + PartialOrd + Sub<Output = R> + Default,
-          R: Into<f32>
+          R: Into<f64>
 {
     #[inline]
     fn num_objectives(&self) -> usize {
@@ -80,7 +80,7 @@ impl<T, R> MultiObjective for MultiObjective3<T>
         self.objectives[objective].partial_cmp(&other.objectives[objective]).unwrap()
     }
     #[inline]
-    fn dist_objective(&self, other: &Self, objective: usize) -> f32 {
+    fn dist_objective(&self, other: &Self, objective: usize) -> f64 {
         (self.objectives[objective] - other.objectives[objective]).into()
     }
 }
@@ -101,7 +101,7 @@ impl<T: Sized + PartialOrd + Copy + Clone> From<(T, T, T, T)> for MultiObjective
 
 impl<T, R> MultiObjective for MultiObjective4<T>
     where T: Copy + PartialOrd + Sub<Output = R>,
-          R: Into<f32>
+          R: Into<f64>
 {
     #[inline]
     fn num_objectives(&self) -> usize {
@@ -112,7 +112,7 @@ impl<T, R> MultiObjective for MultiObjective4<T>
         self.objectives[objective].partial_cmp(&other.objectives[objective]).unwrap()
     }
     #[inline]
-    fn dist_objective(&self, other: &Self, objective: usize) -> f32 {
+    fn dist_objective(&self, other: &Self, objective: usize) -> f64 {
         (self.objectives[objective] - other.objectives[objective]).into()
     }
 }
@@ -139,7 +139,7 @@ impl<T: Sized + PartialOrd + Copy + Clone> AsRef<[T]> for MultiObjectiveVec<T> {
 
 impl<T, R> MultiObjective for MultiObjectiveVec<T>
     where T: Copy + PartialOrd + Sub<Output = R>,
-          R: Into<f32>
+          R: Into<f64>
 {
     #[inline]
     fn num_objectives(&self) -> usize {
@@ -150,7 +150,7 @@ impl<T, R> MultiObjective for MultiObjectiveVec<T>
         self.objectives[objective].partial_cmp(&other.objectives[objective]).unwrap()
     }
     #[inline]
-    fn dist_objective(&self, other: &Self, objective: usize) -> f32 {
+    fn dist_objective(&self, other: &Self, objective: usize) -> f64 {
         (self.objectives[objective] - other.objectives[objective]).into()
     }
 }

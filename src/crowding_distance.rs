@@ -1,11 +1,11 @@
 use std::cmp::Ordering;
 use multi_objective::MultiObjective;
-use std::f32;
+use std::f64::INFINITY;
 
 #[derive(Debug)]
 pub struct SolutionRankDist {
     pub rank: u32,
-    pub dist: f32,
+    pub dist: f64,
     pub idx: usize,
 }
 
@@ -55,15 +55,16 @@ pub fn crowding_distance_assignment<P: MultiObjective>(solutions: &[P],
         s.sort_by(|a, b| solutions[a.idx].cmp_objective(&solutions[b.idx], m));
 
         // assign infinite crowding distance to edges.
-        s[0].dist = f32::INFINITY;
-        s[l - 1].dist = f32::INFINITY;
+        s[0].dist = INFINITY;
+        s[l - 1].dist = INFINITY;
 
         let min_idx = s[0].idx;
         let max_idx = s[l - 1].idx;
 
         let dist_max_min = solutions[max_idx].dist_objective(&solutions[min_idx], m).abs();
+        debug_assert!(dist_max_min >= 0.0);
         if dist_max_min != 0.0 {
-            let norm = num_objectives as f32 * dist_max_min;
+            let norm = num_objectives as f64 * dist_max_min;
             debug_assert!(norm != 0.0);
             for i in 1..(l - 1) {
                 let next_idx = s[i + 1].idx;
