@@ -213,18 +213,20 @@ impl<I, F> SelectedPopulation<I, F>
     /// Merging a selected population result in a rated population as the selection
     /// criteria is no longer met.
     pub fn merge(self, offspring: RatedPopulation<I, F>) -> RatedPopulation<I, F> {
-        let mut new_ind = Vec::with_capacity(self.len() + offspring.len());
-        let mut new_fit = Vec::with_capacity(self.len() + offspring.len());
-        self.all(&mut |ind, fit| {
-            // XXX: Optimize. Avoid clone
-            new_ind.push(ind.clone());
-            new_fit.push(fit.clone());
-        });
+        let new_len = self.len() + offspring.len();
+        let mut new_ind = Vec::with_capacity(new_len);
+        let mut new_fit = Vec::with_capacity(new_len);
 
+        let SelectedPopulation{individuals, fitness, ..} = self;
+
+        new_ind.extend(individuals);
         new_ind.extend(offspring.individuals);
+
+        new_fit.extend(fitness);
         new_fit.extend(offspring.fitness);
 
-        assert!(new_ind.len() == new_fit.len());
+        assert!(new_ind.len() == new_len);
+        assert!(new_fit.len() == new_len);
 
         RatedPopulation {
             individuals: new_ind,
