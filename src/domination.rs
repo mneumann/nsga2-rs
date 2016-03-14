@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn test_non_dominated_sort_iter() {
         let solutions = vec![T(1, 2), T(1, 2), T(2, 1), T(1, 3), T(0, 2)];
-        let mut fronts = FastNonDominatedSorter::new(&solutions, &mut DominationHelper);
+        let mut fronts = FastNonDominatedSorter::new(&solutions, &|s| s, &mut DominationHelper);
 
         assert_eq!(Some(vec![2, 4]), fronts.next());
         assert_eq!(Some(vec![0, 1]), fronts.next());

@@ -2,55 +2,75 @@ use rand::Rng;
 use multi_objective::MultiObjective;
 use domination::Domination;
 use sort::FastNonDominatedSorter;
-use crowding_distance::{SolutionRankDist, crowding_distance_assignment};
-use std::cmp;
+use crowding_distance::{crowding_distance_assignment, CrowdingDistanceAssignment};
+use std::cmp::{self, Ordering};
 
 /// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
 /// objectives.
 
-pub fn select_solutions<T, D>(solutions: &[T],
-                              n: usize,
-                              num_objectives: usize,
-                              domination: &mut D)
-                              -> Vec<SolutionRankDist>
-    where T: MultiObjective,
-          D: Domination<T>
+pub fn select_solutions<T, F, D>(solutions: &mut [T],
+                                 select_n: usize,
+                                 num_objectives: usize,
+                                 domination: &mut D)
+    where T: CrowdingDistanceAssignment<F>,
+          F: MultiObjective,
+          D: Domination<F>
 {
-    let mut selection = Vec::with_capacity(cmp::min(solutions.len(), n));
+    // We can select at most `select_n` solutions.
+    let mut missing = cmp::min(solutions.len(), select_n);
 
-    let pareto_fronts = FastNonDominatedSorter::new(solutions, domination);
+    // make sure all solutions are unselected
+    for s in solutions.iter_mut() {
+        s.unselect();
+    }
 
-    for (rank, front) in pareto_fronts.enumerate() {
-        if selection.len() >= n {
-            break;
-        }
-        let missing = n - selection.len();
+    let pareto_fronts = FastNonDominatedSorter::new(solutions, &|s| s.fitness(), domination);
 
-        let mut solution_rank_dist = crowding_distance_assignment(solutions,
-                                                                  rank as u32,
-                                                                  &front,
-                                                                  num_objectives);
-        if solution_rank_dist.len() <= missing {
-            // whole front fits into result.
-            // XXX: should we sort?
-            selection.extend(solution_rank_dist);
-            assert!(selection.len() <= n);
+    for (rank, mut front) in pareto_fronts.enumerate() {
+        assert!(missing > 0);
+
+        // assign rank and crowding distance of those solutions in `front`.
+        crowding_distance_assignment(solutions,
+                                     &mut front,
+                                     rank as u32,
+                                     num_objectives);
+
+        if front.len() <= missing {
+            // whole front fits into result. XXX: should we sort?
+
+            for i in front.into_iter() {
+                solutions[i].select();
+                assert!(missing > 0);
+                missing -= 1;
+            }
+
+            if missing == 0 {
+                break;
+            }
         } else {
             // choose only best from this front, according to the crowding distance.
-            solution_rank_dist.sort_by(|a, b| {
-                debug_assert!(a.rank == b.rank);
-                a.partial_cmp(b).unwrap()
+            front.sort_by(|&a, &b| {
+                debug_assert!(solutions[a].rank() == solutions[b].rank());
+                if solutions[a].has_better_rank_and_crowding(&solutions[b]) {
+                    Ordering::Less
+                } else if solutions[b].has_better_rank_and_crowding(&solutions[a]) {
+                    Ordering::Greater
+                } else {
+                    Ordering::Equal
+                }
             });
-            selection.extend(solution_rank_dist.into_iter().take(missing));
-            assert!(selection.len() == n);
+
+            for i in front.into_iter().take(missing) {
+                assert!(missing > 0);
+                solutions[i].select();
+                missing -= 1;
+            }
+
+            assert!(missing == 0);
             break;
         }
     }
-
-    assert!(selection.len() == cmp::min(solutions.len(), n));
-    return selection;
 }
-
 
 
 /// Select the best individual out of `k` randomly choosen.

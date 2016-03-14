@@ -18,8 +18,9 @@ impl FastNonDominatedSorter {
     /// `domination(i, j)` or `domination(j, i)` is called, but never both. This is important for
     /// probabilistic dominance, where two calls could lead to different results.
 
-    pub fn new<T, D>(solutions: &[T], domination: &mut D) -> Self
-        where D: Domination<T>
+    pub fn new<T, FIT, MAP, DOM>(solutions: &[T], map: &MAP, domination: &mut DOM) -> Self
+        where MAP: Fn(&T) -> &FIT,
+              DOM: Domination<FIT>
     {
         let mut current_front = Vec::new();
         let mut domination_count: Vec<usize> = solutions.iter()
@@ -35,7 +36,7 @@ impl FastNonDominatedSorter {
                 let p = &solutions[i];
                 let q = &solutions[j];
 
-                match domination.domination_ord(p, q) {
+                match domination.domination_ord(map(p), map(q)) {
                     Ordering::Less => {
                         // p dominates q
                         // Add `q` to the set of solutions dominated by `p`.
@@ -109,7 +110,7 @@ pub fn fast_non_dominated_sort<T, D>(solutions: &[T],
                                      -> Vec<Vec<usize>>
     where D: Domination<T>
 {
-    let sorter = FastNonDominatedSorter::new(solutions, domination);
+    let sorter = FastNonDominatedSorter::new(solutions, &|f| f, domination);
     let mut found_solutions: usize = 0;
     let mut fronts = Vec::new();
 

@@ -12,6 +12,7 @@ pub mod sort;
 pub mod prob;
 pub mod prob_domination;
 
+/*
 #[test]
 fn test_abc() {
     use multi_objective::MultiObjective2;
@@ -41,3 +42,4 @@ fn test_abc() {
         println!("distances: {:?}", distances);
     }
 }
+*/

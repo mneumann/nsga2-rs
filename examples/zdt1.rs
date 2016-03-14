@@ -161,18 +161,18 @@ struct ZdtDriver {
 }
 
 impl Driver for ZdtDriver {
-    type IND = ZdtGenome;
+    type GENOME = ZdtGenome;
     type FIT = MultiObjective2<f32>;
 
-    fn random_individual<R>(&self, rng: &mut R) -> Self::IND where R: Rng{
+    fn random_genome<R>(&self, rng: &mut R) -> Self::GENOME where R: Rng{
         ZdtGenome::random(rng, self.zdt_order)
     }
 
-    fn fitness(&self, ind: &Self::IND) -> Self::FIT {
+    fn fitness(&self, ind: &Self::GENOME) -> Self::FIT {
         ind.fitness()
     }
 
-    fn mate<R>(&self, rng: &mut R, parent1: &Self::IND, parent2: &Self::IND) -> ZdtGenome where R: Rng{
+    fn mate<R>(&self, rng: &mut R, parent1: &Self::GENOME, parent2: &Self::GENOME) -> Self::GENOME where R: Rng{
         ZdtGenome::crossover1(rng, (parent1, parent2), self.mating_eta)
     }
 }

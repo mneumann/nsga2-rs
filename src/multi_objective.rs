@@ -3,7 +3,7 @@ use std::ops::Sub;
 use std::convert::From;
 use domination::Dominate;
 
-pub trait MultiObjective {
+pub trait MultiObjective: Send {
     fn num_objectives(&self) -> usize;
 
     fn cmp_objective(&self, other: &Self, objective: usize) -> Ordering;
@@ -14,12 +14,13 @@ pub trait MultiObjective {
 
 #[derive(Debug, Clone)]
 pub struct MultiObjective2<T>
-    where T: Sized + PartialOrd + Copy + Clone
+    where T: Sized + PartialOrd + Copy + Clone + Send
 {
     pub objectives: [T; 2],
 }
 
-impl<T: Sized + PartialOrd + Copy + Clone> From<(T, T)> for MultiObjective2<T> {
+impl<T> From<(T, T)> for MultiObjective2<T> where T: Sized + PartialOrd + Copy + Clone + Send
+{
     #[inline]
     fn from(t: (T, T)) -> MultiObjective2<T> {
         MultiObjective2 { objectives: [t.0, t.1] }
@@ -27,8 +28,7 @@ impl<T: Sized + PartialOrd + Copy + Clone> From<(T, T)> for MultiObjective2<T> {
 }
 
 impl<T, R> MultiObjective for MultiObjective2<T>
-    where T: Copy + PartialOrd + Sub<Output = R>,
-          R: Into<f64>
+    where T: Copy + PartialOrd + Sub<Output = R> + Send, R: Into<f64>
 {
     #[inline]
     fn num_objectives(&self) -> usize {
@@ -46,13 +46,13 @@ impl<T, R> MultiObjective for MultiObjective2<T>
 
 #[derive(Debug, Clone, Default)]
 pub struct MultiObjective3<T>
-    where T: Sized + PartialOrd + Copy + Clone + Default
+    where T: Sized + PartialOrd + Copy + Clone + Default + Send
 {
     pub objectives: [T; 3],
 }
 
 impl<T, I> From<I> for MultiObjective3<T>
-    where T: Sized + PartialOrd + Copy + Clone + Default,
+    where T: Sized + PartialOrd + Copy + Clone + Default + Send,
           I: Iterator<Item = T>
 {
     #[inline]
@@ -68,7 +68,7 @@ impl<T, I> From<I> for MultiObjective3<T>
 
 
 impl<T, R> MultiObjective for MultiObjective3<T>
-    where T: Copy + PartialOrd + Sub<Output = R> + Default,
+    where T: Copy + PartialOrd + Sub<Output = R> + Default + Send,
           R: Into<f64>
 {
     #[inline]
@@ -87,12 +87,12 @@ impl<T, R> MultiObjective for MultiObjective3<T>
 
 #[derive(Debug, Clone)]
 pub struct MultiObjective4<T>
-    where T: Sized + PartialOrd + Copy + Clone
+    where T: Sized + PartialOrd + Copy + Clone + Send
 {
     pub objectives: [T; 4],
 }
 
-impl<T: Sized + PartialOrd + Copy + Clone> From<(T, T, T, T)> for MultiObjective4<T> {
+impl<T> From<(T, T, T, T)> for MultiObjective4<T> where T: Sized + PartialOrd + Copy + Clone + Send {
     #[inline]
     fn from(t: (T, T, T, T)) -> MultiObjective4<T> {
         MultiObjective4 { objectives: [t.0, t.1, t.2, t.3] }
@@ -100,7 +100,7 @@ impl<T: Sized + PartialOrd + Copy + Clone> From<(T, T, T, T)> for MultiObjective
 }
 
 impl<T, R> MultiObjective for MultiObjective4<T>
-    where T: Copy + PartialOrd + Sub<Output = R>,
+    where T: Copy + PartialOrd + Sub<Output = R> + Send,
           R: Into<f64>
 {
     #[inline]
@@ -119,26 +119,26 @@ impl<T, R> MultiObjective for MultiObjective4<T>
 
 #[derive(Debug, Clone)]
 pub struct MultiObjectiveVec<T>
-    where T: Sized + PartialOrd + Copy + Clone
+    where T: Sized + PartialOrd + Copy + Clone + Send
 {
     objectives: Vec<T>,
 }
 
-impl<T: Sized + PartialOrd + Copy + Clone> From<Vec<T>> for MultiObjectiveVec<T> {
+impl<T> From<Vec<T>> for MultiObjectiveVec<T> where T: Sized + PartialOrd + Copy + Clone + Send {
     #[inline]
     fn from(t: Vec<T>) -> MultiObjectiveVec<T> {
         MultiObjectiveVec { objectives: t }
     }
 }
 
-impl<T: Sized + PartialOrd + Copy + Clone> AsRef<[T]> for MultiObjectiveVec<T> {
+impl<T> AsRef<[T]> for MultiObjectiveVec<T> where T: Sized + PartialOrd + Copy + Clone + Send {
     fn as_ref(&self) -> &[T] {
         &self.objectives
     }
 }
 
 impl<T, R> MultiObjective for MultiObjectiveVec<T>
-    where T: Copy + PartialOrd + Sub<Output = R>,
+    where T: Copy + PartialOrd + Sub<Output = R> + Send,
           R: Into<f64>
 {
     #[inline]
