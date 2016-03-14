@@ -160,14 +160,13 @@ impl<G, F> RatedPopulation<G, F> where F: MultiObjective, G: Send
         self.individuals.len()
     }
 
-    /*
-    pub fn fitness(&self) -> &[F] {
-        &self.fitness
+    pub fn fitness(&self, index: usize) -> &F {
+        self.individuals[index].fitness.as_ref().unwrap()
     }
-    pub fn fitness_mut(&mut self) -> &mut [F] {
-        &mut self.fitness
+
+    pub fn fitness_mut(&mut self, index: usize) -> &mut F {
+        self.individuals[index].fitness.as_mut().unwrap()
     }
-    */
 }
 
 impl<G, F> RankedPopulation<G, F> where F: MultiObjective, G: Send
