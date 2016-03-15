@@ -33,6 +33,7 @@ pub fn crowding_distance_assignment<T, F>(solutions: &mut [T],
                                           num_objectives: usize) where T: CrowdingDistanceAssignment<F>,
                                                                        F: MultiObjective {
     assert!(num_objectives > 0);
+    assert!(num_objectives <= F::NUM_OBJECTIVES);
 
     // Initialize all solutions of that pareto front 
     for &i in front_indices.iter() {

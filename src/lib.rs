@@ -1,3 +1,4 @@
+#![feature(associated_consts)]
 extern crate rand;
 extern crate rayon;
 extern crate time;
