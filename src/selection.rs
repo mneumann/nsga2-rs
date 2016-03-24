@@ -5,65 +5,85 @@ use sort::FastNonDominatedSorter;
 use crowding_distance::{crowding_distance_assignment, CrowdingDistanceAssignment};
 use std::cmp::{self, Ordering};
 
-/// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
-/// objectives. Uses the approach NSGA takes.
+pub trait SelectSolutions<T, F>
+    where T: CrowdingDistanceAssignment<F>, F: MultiObjective + Domination
+{
+    fn new<R>(rng: &mut R) -> Self where R: Rng;
 
-pub fn select_nsga<T, F>(solutions: &mut [T], select_n: usize, num_objectives: usize)
+    /// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
+    /// objectives.
+    fn select_solutions(&mut self, solutions: &mut [T], select_n: usize, num_objectives: usize);
+}
+
+
+/// Uses the approach NSGA takes.
+pub struct SelectNSGA;
+
+impl<T, F> SelectSolutions<T, F> for SelectNSGA
     where T: CrowdingDistanceAssignment<F>,
           F: MultiObjective + Domination
 {
-    // We can select at most `select_n` solutions.
-    let mut missing = cmp::min(solutions.len(), select_n);
-
-    // make sure all solutions are unselected
-    for s in solutions.iter_mut() {
-        s.unselect();
+    fn new<R>(_rng: &mut R) -> Self
+        where R: Rng
+    {
+        SelectNSGA
     }
 
-    let pareto_fronts = FastNonDominatedSorter::new(solutions, &|s| s.fitness());
+    fn select_solutions(&mut self, solutions: &mut [T], select_n: usize, num_objectives: usize) {
+        // We can select at most `select_n` solutions.
+        let mut missing = cmp::min(solutions.len(), select_n);
 
-    for (rank, mut front) in pareto_fronts.enumerate() {
-        assert!(missing > 0);
+        // make sure all solutions are unselected
+        for s in solutions.iter_mut() {
+            s.unselect();
+        }
 
-        // assign rank and crowding distance of those solutions in `front`.
-        crowding_distance_assignment(solutions, &mut front, rank as u32, num_objectives);
+        let pareto_fronts = FastNonDominatedSorter::new(solutions, &|s| s.fitness());
 
-        if front.len() <= missing {
-            // whole front fits into result. XXX: should we sort?
+        for (rank, mut front) in pareto_fronts.enumerate() {
+            assert!(missing > 0);
 
-            for i in front.into_iter() {
-                solutions[i].select();
-                assert!(missing > 0);
-                missing -= 1;
-            }
+            // assign rank and crowding distance of those solutions in `front`.
+            crowding_distance_assignment(solutions, &mut front, rank as u32, num_objectives);
 
-            if missing == 0 {
+            if front.len() <= missing {
+                // whole front fits into result. XXX: should we sort?
+
+                for i in front.into_iter() {
+                    solutions[i].select();
+                    assert!(missing > 0);
+                    missing -= 1;
+                }
+
+                if missing == 0 {
+                    break;
+                }
+            } else {
+                // choose only best from this front, according to the crowding distance.
+                front.sort_by(|&a, &b| {
+                    debug_assert!(solutions[a].rank() == solutions[b].rank());
+                    if solutions[a].has_better_rank_and_crowding(&solutions[b]) {
+                        Ordering::Less
+                    } else if solutions[b].has_better_rank_and_crowding(&solutions[a]) {
+                        Ordering::Greater
+                    } else {
+                        Ordering::Equal
+                    }
+                });
+
+                for i in front.into_iter().take(missing) {
+                    assert!(missing > 0);
+                    solutions[i].select();
+                    missing -= 1;
+                }
+
+                assert!(missing == 0);
                 break;
             }
-        } else {
-            // choose only best from this front, according to the crowding distance.
-            front.sort_by(|&a, &b| {
-                debug_assert!(solutions[a].rank() == solutions[b].rank());
-                if solutions[a].has_better_rank_and_crowding(&solutions[b]) {
-                    Ordering::Less
-                } else if solutions[b].has_better_rank_and_crowding(&solutions[a]) {
-                    Ordering::Greater
-                } else {
-                    Ordering::Equal
-                }
-            });
-
-            for i in front.into_iter().take(missing) {
-                assert!(missing > 0);
-                solutions[i].select();
-                missing -= 1;
-            }
-
-            assert!(missing == 0);
-            break;
         }
     }
 }
+
 
 /// Selection using NSGP as described in [1].
 /// 

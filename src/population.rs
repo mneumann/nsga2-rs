@@ -1,7 +1,7 @@
 use domination::Domination;
 use multi_objective::MultiObjective;
 use crowding_distance::CrowdingDistanceAssignment; // XXX: Change name
-use selection::select_nsga;
+use selection::SelectSolutions;
 use rayon::par_iter::*;
 use selection::tournament_selection_fast;
 use rand::Rng;
@@ -160,11 +160,13 @@ impl<G, F> RatedPopulation<G, F>
     where F: MultiObjective + Domination,
           G: Send
 {
-    pub fn select(self, population_size: usize, num_objectives: usize) -> RankedPopulation<G, F> {
+    pub fn select<S>(self, population_size: usize, num_objectives: usize, selection: &mut S) -> RankedPopulation<G, F>
+        where S: SelectSolutions<Individual<G, F>, F>,
+    {
         let RatedPopulation { mut individuals } = self;
 
         // evaluate rank and crowding distance: XXX: replace by Select trait
-        select_nsga(&mut individuals, population_size, num_objectives);
+        selection.select_solutions(&mut individuals, population_size, num_objectives);
 
         // only keep individuals which are selected
         individuals.retain(|i| i.is_selected());

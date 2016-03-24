@@ -6,6 +6,7 @@ extern crate nsga2;
 use rand::{Rng, Closed01};
 use nsga2::driver::{Driver, DriverConfig};
 use nsga2::multi_objective::MultiObjective2;
+use nsga2::selection::SelectNSGA;
 
 /// optimal pareto front (f_1, 1 - sqrt(f_1))
 /// 0 <= x[i] <= 1.0
@@ -162,6 +163,7 @@ struct ZdtDriver {
 impl Driver for ZdtDriver {
     type GENOME = ZdtGenome;
     type FIT = MultiObjective2<f32>;
+    type SELECTION = SelectNSGA;
 
     fn random_genome<R>(&self, rng: &mut R) -> Self::GENOME where R: Rng{
         ZdtGenome::random(rng, self.zdt_order)

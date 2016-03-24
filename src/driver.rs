@@ -1,7 +1,8 @@
 use rand::Rng;
 use domination::Domination;
 use multi_objective::MultiObjective;
-use population::{UnratedPopulation, RatedPopulation, RankedPopulation};
+use population::{Individual, UnratedPopulation, RatedPopulation, RankedPopulation};
+use selection::SelectSolutions;
 use time;
 
 pub struct DriverConfig {
@@ -17,6 +18,7 @@ pub trait Driver: Sync
 {
     type GENOME: Clone + Sync + Send; // XXX: clone?
     type FIT: MultiObjective + Domination + Clone + Send; // XXX: clone?
+    type SELECTION: SelectSolutions<Individual<Self::GENOME, Self::FIT>, Self::FIT>;
 
     fn random_genome<R>(&self, rng: &mut R) -> Self::GENOME where R: Rng;
     fn initial_population<R>(&self, rng: &mut R, n: usize) -> UnratedPopulation<Self::GENOME, Self::FIT> where R: Rng {
@@ -58,7 +60,8 @@ pub trait Driver: Sync
             let mut next_generation = parents.merge(rated_offspring);
             // apply a population metric on the whole population
             self.population_metric(&mut next_generation);
-            parents = next_generation.select(config.mu, config.num_objectives);
+            let mut selection = Self::SELECTION::new(rng); 
+            parents = next_generation.select(config.mu, config.num_objectives, &mut selection);
 
             let mut found_solutions = 0;
             parents.all(&mut |ind, fit| {

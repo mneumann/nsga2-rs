@@ -1,7 +1,8 @@
 use multi_objective::MultiObjective;
+//use domination::Domination;
 use std::f64::INFINITY;
 
-pub trait CrowdingDistanceAssignment<F> where F: MultiObjective {
+pub trait CrowdingDistanceAssignment<F> where F: MultiObjective { // + Domination {
     fn fitness(&self) -> &F;
     fn rank_mut(&mut self) -> &mut u32;
     fn dist_mut(&mut self) -> &mut f64;
