@@ -20,6 +20,10 @@ pub trait MultiObjective: Send {
         }
         Ordering::Equal
     }
+
+    fn similar_to(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
 }
 
 #[derive(Debug, Clone)]

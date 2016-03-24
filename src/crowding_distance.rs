@@ -8,6 +8,7 @@ pub trait CrowdingDistanceAssignment<F> where F: MultiObjective {
     fn rank(&self) -> u32;
     fn dist(&self) -> f64;
 
+
     fn set_rank(&mut self, rank: u32) {
         *self.rank_mut() = rank;
     }
@@ -15,6 +16,11 @@ pub trait CrowdingDistanceAssignment<F> where F: MultiObjective {
     fn set_dist(&mut self, dist: f64) {
         *self.dist_mut() = dist;
     }
+
+    fn crowd(&self) -> usize;
+
+    // number of individuals in the same group (NSGP)
+    fn set_crowd(&mut self, crowd: usize);
 
     fn select(&mut self); 
     fn unselect(&mut self); 
@@ -39,6 +45,7 @@ pub fn crowding_distance_assignment<T, F>(solutions: &mut [T],
     for &i in front_indices.iter() {
         solutions[i].set_rank(common_rank);
         solutions[i].set_dist(0.0);
+        solutions[i].set_crowd(1);
         solutions[i].unselect();
     }
 

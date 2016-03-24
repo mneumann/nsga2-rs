@@ -1,13 +1,15 @@
 use domination::Domination;
 use multi_objective::MultiObjective;
 use crowding_distance::CrowdingDistanceAssignment; // XXX: Change name
-use selection::select_solutions;
+use selection::select_nsga;
 use rayon::par_iter::*;
 use selection::tournament_selection_fast;
 use rand::Rng;
 use std::u32;
 
-pub struct Individual<G, F> where F: MultiObjective + Domination, G: Send
+pub struct Individual<G, F>
+    where F: MultiObjective + Domination,
+          G: Send
 {
     genome: G,
 
@@ -21,10 +23,16 @@ pub struct Individual<G, F> where F: MultiObjective + Domination, G: Send
     // The crowding distance to neighboring individuals (individuals with similar fitness)
     crowding_distance: f64,
 
+    // the number of individuals in each crowd (points of equal fitness)
+    crowd_size: u32,
+
     selected: bool,
 }
 
-impl<G, F> CrowdingDistanceAssignment<F> for Individual<G, F> where F: MultiObjective + Domination, G: Send {
+impl<G, F> CrowdingDistanceAssignment<F> for Individual<G, F>
+    where F: MultiObjective + Domination,
+          G: Send
+{
     fn fitness(&self) -> &F {
         self.fitness.as_ref().unwrap()
     }
@@ -51,15 +59,27 @@ impl<G, F> CrowdingDistanceAssignment<F> for Individual<G, F> where F: MultiObje
     fn is_selected(&self) -> bool {
         self.selected
     }
+
+    fn crowd(&self) -> usize {
+        self.crowd_size as usize
+    }
+
+    fn set_crowd(&mut self, crowd: usize) {
+        self.crowd_size = crowd as u32;
+    }
 }
 
-impl<G, F> Individual<G, F> where F: MultiObjective + Domination, G: Send {
+impl<G, F> Individual<G, F>
+    where F: MultiObjective + Domination,
+          G: Send
+{
     fn from_genome(genome: G) -> Self {
         Individual {
             genome: genome,
             fitness: None,
             pareto_rank: u32::MAX,
             crowding_distance: 0.0,
+            crowd_size: 1,
             selected: false,
         }
     }
@@ -74,26 +94,34 @@ impl<G, F> Individual<G, F> where F: MultiObjective + Domination, G: Send {
 
 /// An unrated Population of individuals.
 
-pub struct UnratedPopulation<G, F> where F: MultiObjective + Domination, G: Send
+pub struct UnratedPopulation<G, F>
+    where F: MultiObjective + Domination,
+          G: Send
 {
     individuals: Vec<Individual<G, F>>,
 }
 
 /// A rated Population of individuals, i.e. each individual has a fitness assigned.
 
-pub struct RatedPopulation<G, F> where F: MultiObjective + Domination, G: Send
+pub struct RatedPopulation<G, F>
+    where F: MultiObjective + Domination,
+          G: Send
 {
     individuals: Vec<Individual<G, F>>,
 }
 
 /// A ranked (selected) Population (pareto_rank and crowding_distance).
 
-pub struct RankedPopulation<G, F> where F: MultiObjective + Domination, G: Send
+pub struct RankedPopulation<G, F>
+    where F: MultiObjective + Domination,
+          G: Send
 {
     individuals: Vec<Individual<G, F>>,
 }
 
-impl<G, F> UnratedPopulation<G, F> where F: MultiObjective + Domination, G: Send
+impl<G, F> UnratedPopulation<G, F>
+    where F: MultiObjective + Domination,
+          G: Send
 {
     pub fn individuals(&self) -> &[Individual<G, F>] {
         &self.individuals
@@ -124,34 +152,26 @@ impl<G, F> UnratedPopulation<G, F> where F: MultiObjective + Domination, G: Send
             ind.fitness = Some(fitness);
         });
 
-        RatedPopulation {
-            individuals: individuals,
-        }
+        RatedPopulation { individuals: individuals }
     }
 }
 
-impl<G, F> RatedPopulation<G, F> where F: MultiObjective + Domination, G: Send
+impl<G, F> RatedPopulation<G, F>
+    where F: MultiObjective + Domination,
+          G: Send
 {
-    pub fn select(self,
-                  population_size: usize,
-                  num_objectives: usize)
-                  -> RankedPopulation<G, F>
-    {
+    pub fn select(self, population_size: usize, num_objectives: usize) -> RankedPopulation<G, F> {
         let RatedPopulation { mut individuals } = self;
 
-        // evaluate rank and crowding distance
-        select_solutions(&mut individuals,
-                         population_size,
-                         num_objectives);
+        // evaluate rank and crowding distance: XXX: replace by Select trait
+        select_nsga(&mut individuals, population_size, num_objectives);
 
         // only keep individuals which are selected
         individuals.retain(|i| i.is_selected());
 
         assert!(individuals.len() == population_size);
 
-        RankedPopulation {
-            individuals: individuals,
-        }
+        RankedPopulation { individuals: individuals }
     }
 
     pub fn individuals_mut(&mut self) -> &mut [Individual<G, F>] {
@@ -159,9 +179,7 @@ impl<G, F> RatedPopulation<G, F> where F: MultiObjective + Domination, G: Send
     }
 
     pub fn new() -> Self {
-        RatedPopulation {
-            individuals: Vec::new(),
-        }
+        RatedPopulation { individuals: Vec::new() }
     }
 
     pub fn len(&self) -> usize {
@@ -177,7 +195,9 @@ impl<G, F> RatedPopulation<G, F> where F: MultiObjective + Domination, G: Send
     }
 }
 
-impl<G, F> RankedPopulation<G, F> where F: MultiObjective + Domination, G: Send
+impl<G, F> RankedPopulation<G, F>
+    where F: MultiObjective + Domination,
+          G: Send
 {
     /// Generate an unrated offspring population.
     /// XXX: Factor out selection into a separate Trait  SelectionMethod
@@ -234,9 +254,7 @@ impl<G, F> RankedPopulation<G, F> where F: MultiObjective + Domination, G: Send
     }
 
     pub fn new() -> Self {
-        RankedPopulation {
-            individuals: Vec::new(),
-        }
+        RankedPopulation { individuals: Vec::new() }
     }
 
     pub fn len(&self) -> usize {
@@ -252,9 +270,7 @@ impl<G, F> RankedPopulation<G, F> where F: MultiObjective + Domination, G: Send
 
         individuals.extend(offspring.individuals);
 
-        RatedPopulation {
-            individuals: individuals,
-        }
+        RatedPopulation { individuals: individuals }
     }
 
     pub fn all<C>(&self, f: &mut C)
