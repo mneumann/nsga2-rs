@@ -94,7 +94,7 @@ pub struct SelectNSGP;
 
 impl<T, F> SelectSolutions<T, F> for SelectNSGP
     where T: CrowdingDistanceAssignment<F>,
-          F: MultiObjective + Domination + Eq
+          F: MultiObjective + Domination
 {
     fn select_solutions<R>(solutions: &mut [T],
                            select_n: usize,
