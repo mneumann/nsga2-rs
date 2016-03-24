@@ -1,8 +1,8 @@
 use multi_objective::MultiObjective;
-//use domination::Domination;
 use std::f64::INFINITY;
+use std::cmp::Ordering;
 
-pub trait CrowdingDistanceAssignment<F> where F: MultiObjective { // + Domination {
+pub trait CrowdingDistanceAssignment<F> where F: MultiObjective {
     fn fitness(&self) -> &F;
     fn rank_mut(&mut self) -> &mut u32;
     fn dist_mut(&mut self) -> &mut f64;
@@ -31,6 +31,25 @@ pub trait CrowdingDistanceAssignment<F> where F: MultiObjective { // + Dominatio
     fn has_better_rank_and_crowding(&self, other: &Self) -> bool {
         (self.rank() < other.rank()) || 
         ((self.rank() == other.rank()) && self.dist() > other.dist())
+    }
+
+    #[inline]
+    fn rank_and_crowding_order(&self, other: &Self) -> Ordering {
+        if self.rank() < other.rank() {
+            return Ordering::Less; 
+        }
+        if self.rank() > other.rank() {
+            return Ordering::Greater; 
+        }
+        debug_assert!(self.rank() == other.rank());
+        if self.dist() > other.dist() {
+            // Higher distance is better!
+            return Ordering::Less; 
+        }
+        if self.dist() < other.dist() {
+            return Ordering::Greater; 
+        }
+        return Ordering::Equal;
     }
 }
 

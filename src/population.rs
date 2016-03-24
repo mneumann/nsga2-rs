@@ -172,6 +172,9 @@ impl<G, F> RatedPopulation<G, F>
         // only keep individuals which are selected
         individuals.retain(|i| i.is_selected());
 
+        // sort by rank and crowding-distance 
+        individuals.sort_by(|a, b| a.rank_and_crowding_order(b));
+
         assert!(individuals.len() == population_size);
 
         RankedPopulation { individuals: individuals }
@@ -203,7 +206,6 @@ impl<G, F> RankedPopulation<G, F>
           G: Send
 {
     /// Generate an unrated offspring population.
-    /// XXX: Factor out selection into a separate Trait  SelectionMethod
     pub fn reproduce<R, M>(&self,
                            rng: &mut R,
                            offspring_size: usize,
