@@ -47,6 +47,10 @@ pub trait Driver: Sync
     /// This can be used to update certain objectives in relation to the whole population.
     fn population_metric(&self, _population: &mut RatedPopulation<Self::GENOME, Self::FIT>) {}
 
+    fn empty_parent_population(&self) -> RankedPopulation<Self::GENOME, Self::FIT> {
+        RankedPopulation::<Self::GENOME, Self::FIT>::new()
+    }
+
     fn reproduce<R>(&self,
                     parents: &RankedPopulation<Self::GENOME, Self::FIT>,
                     rng: &mut R,
@@ -96,7 +100,7 @@ pub trait Driver: Sync
     {
         // this is generation 0. it's empty
         let mut time_last = time::precise_time_ns();
-        let mut parents = RankedPopulation::<Self::GENOME, Self::FIT>::new();
+        let mut parents = self.empty_parent_population();
         let mut offspring = self.initial_population(rng, config.mu);
         assert!(offspring.len() == config.mu);
         let mut gen: usize = 0;
