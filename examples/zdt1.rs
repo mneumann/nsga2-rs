@@ -195,7 +195,7 @@ fn main() {
         parallel_weight: 1.0, // rayon's weight
     };
 
-    let final_population = driver.run(&mut rng, &driver_config, &|_, _, _, _| {});
+    let final_population = driver.run(&mut rng, &driver_config, &SelectNSGA, &|_, _, _, _| {});
 
     let max_rank = final_population.max_rank().unwrap();
     for rank in 0..max_rank + 1 {

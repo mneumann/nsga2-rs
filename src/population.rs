@@ -160,14 +160,14 @@ impl<G, F> RatedPopulation<G, F>
     where F: MultiObjective + Domination,
           G: Send
 {
-    pub fn select<S, R>(self, population_size: usize, num_objectives: usize, rng: &mut R) -> RankedPopulation<G, F>
+    pub fn select<S, R>(self, population_size: usize, num_objectives: usize, selection: &S, rng: &mut R) -> RankedPopulation<G, F>
         where S: SelectSolutions<Individual<G, F>, F>,
               R: Rng
     {
         let RatedPopulation { mut individuals } = self;
 
         // evaluate rank and crowding distance: XXX: replace by Select trait
-        S::select_solutions(&mut individuals, population_size, num_objectives, rng);
+        selection.select_solutions(&mut individuals, population_size, num_objectives, rng);
 
         // only keep individuals which are selected
         individuals.retain(|i| i.is_selected());

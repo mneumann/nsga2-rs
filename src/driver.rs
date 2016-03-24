@@ -43,6 +43,7 @@ pub trait Driver: Sync
     fn run<R, L>(&self,
                  rng: &mut R,
                  config: &DriverConfig,
+                 selection: &Self::SELECTION,
                  logger: &L)
                  -> RankedPopulation<Self::GENOME, Self::FIT>
         where R: Rng,
@@ -60,7 +61,7 @@ pub trait Driver: Sync
             let mut next_generation = parents.merge(rated_offspring);
             // apply a population metric on the whole population
             self.population_metric(&mut next_generation);
-            parents = next_generation.select::<Self::SELECTION, _>(config.mu, config.num_objectives, rng);
+            parents = next_generation.select(config.mu, config.num_objectives, selection, rng);
 
             let mut found_solutions = 0;
             parents.all(&mut |ind, fit| {

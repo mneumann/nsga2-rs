@@ -5,12 +5,13 @@ use sort::FastNonDominatedSorter;
 use crowding_distance::{crowding_distance_assignment, CrowdingDistanceAssignment};
 use std::cmp::{self, Ordering};
 
-pub trait SelectSolutions<T, F>
+pub trait SelectSolutions<T, F> : Sized
     where T: CrowdingDistanceAssignment<F>, F: MultiObjective + Domination,
 {
     /// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
     /// objectives. `rng` might not be used.
-    fn select_solutions<R>(solutions: &mut [T],
+    fn select_solutions<R>(&self,
+                           solutions: &mut [T],
                            select_n: usize,
                            num_objectives: usize,
                            rng: &mut R)
@@ -25,7 +26,8 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGA
     where T: CrowdingDistanceAssignment<F>,
           F: MultiObjective + Domination
 {
-    fn select_solutions<R>(solutions: &mut [T],
+    fn select_solutions<R>(&self,
+                           solutions: &mut [T],
                            select_n: usize,
                            num_objectives: usize,
                            _rng: &mut R)
@@ -45,7 +47,10 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGA
             assert!(missing > 0);
 
             // assign rank and crowding distance of those solutions in `front`.
-            crowding_distance_assignment(solutions, &mut front, rank as u32, num_objectives);
+            let _ = crowding_distance_assignment(solutions,
+                                                 &mut front,
+                                                 rank as u32,
+                                                 num_objectives);
 
             if front.len() <= missing {
                 // whole front fits into result. XXX: should we sort?
@@ -90,13 +95,16 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGA
 /// [1]: Multi-objective genetic programming with redundancy-regulations for automatic construction of image feature extractors.
 ///      Watchareeruetai, Ukrit and Matsumoto, Tetsuya and Takeuchi, Yoshinori and Hiroaki, KUDO and Ohnishi, Noboru.
 ///      2010
-pub struct SelectNSGP;
+pub struct SelectNSGP {
+    pub objective_eps: f64,
+}
 
 impl<T, F> SelectSolutions<T, F> for SelectNSGP
     where T: CrowdingDistanceAssignment<F>,
           F: MultiObjective + Domination
 {
-    fn select_solutions<R>(solutions: &mut [T],
+    fn select_solutions<R>(&self,
+                           solutions: &mut [T],
                            select_n: usize,
                            num_objectives: usize,
                            rng: &mut R)
@@ -116,29 +124,33 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
         for (rank, mut front) in pareto_fronts.enumerate() {
 
             // first assign rank and crowding distance of those solutions in `front`.
-            crowding_distance_assignment(solutions, &mut front, rank as u32, num_objectives);
+            let min_max_distances = crowding_distance_assignment(solutions,
+                                                                 &mut front,
+                                                                 rank as u32,
+                                                                 num_objectives);
 
             // then group this front into individuals with similar (or equal) fitness.
             let mut groups: Vec<Vec<usize>> = Vec::new();
 
-            for idx in front {
+            'group: for idx in front {
                 // insert `idx` into a group.
                 // test fitness of `idx` (solutions[idx]) against a member of each group.
                 // if none fits, create a new group.
 
-                let mut insert_in = None;
-                for (i, grp) in groups.iter().enumerate() {
-                    if solutions[idx].fitness().similar_to(solutions[grp[0]].fitness()) {
-                        insert_in = Some(i);
-                        break;
+                let fitness = solutions[idx].fitness();
+                for grp in groups.iter_mut() {
+                    let cmp_idx = grp[0];
+
+                    if fitness.similar_to(solutions[cmp_idx].fitness(),
+                                          &min_max_distances,
+                                          self.objective_eps) {
+                        grp.push(idx);
+                        continue 'group;
                     }
                 }
 
-                if let Some(i) = insert_in {
-                    groups[i].push(idx);
-                } else {
-                    groups.push(vec![idx]);
-                }
+                // create a new group
+                groups.push(vec![idx]);
             }
 
             // update the crowding_distance within each group. simply take the average.

@@ -21,8 +21,27 @@ pub trait MultiObjective: Send {
         Ordering::Equal
     }
 
-    fn similar_to(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
+    fn similar_to(&self, other: &Self, min_max_objective_distances: &[f64], objective_eps: f64) -> bool {
+        debug_assert!(min_max_objective_distances.len() == Self::NUM_OBJECTIVES);
+        let mut eq_cnt = 0;
+        for i in 0..Self::NUM_OBJECTIVES {
+            let dist = self.dist_objective(other, i).abs();
+            let min_max_dist = min_max_objective_distances[i];
+            if min_max_dist == 0.0 {
+                if dist == 0.0 { // XXX: This could be removed, as it should be equal
+                    eq_cnt += 1;
+                }
+            }
+            else {
+                assert!(min_max_dist > 0.0);
+                debug_assert!(dist >= 0.0);
+                if (dist / min_max_dist) < objective_eps {
+                    eq_cnt += 1;
+                }
+            }
+        }
+
+        eq_cnt == Self::NUM_OBJECTIVES
     }
 }
 
