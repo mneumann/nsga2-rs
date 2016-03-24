@@ -6,13 +6,15 @@ use crowding_distance::{crowding_distance_assignment, CrowdingDistanceAssignment
 use std::cmp::{self, Ordering};
 
 pub trait SelectSolutions<T, F>
-    where T: CrowdingDistanceAssignment<F>, F: MultiObjective + Domination
+    where T: CrowdingDistanceAssignment<F>, F: MultiObjective + Domination,
 {
-    fn new<R>(rng: &mut R) -> Self where R: Rng;
-
     /// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
-    /// objectives.
-    fn select_solutions(&mut self, solutions: &mut [T], select_n: usize, num_objectives: usize);
+    /// objectives. `rng` might not be used.
+    fn select_solutions<R>(solutions: &mut [T],
+                           select_n: usize,
+                           num_objectives: usize,
+                           rng: &mut R)
+        where R: Rng;
 }
 
 
@@ -23,13 +25,12 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGA
     where T: CrowdingDistanceAssignment<F>,
           F: MultiObjective + Domination
 {
-    fn new<R>(_rng: &mut R) -> Self
+    fn select_solutions<R>(solutions: &mut [T],
+                           select_n: usize,
+                           num_objectives: usize,
+                           _rng: &mut R)
         where R: Rng
     {
-        SelectNSGA
-    }
-
-    fn select_solutions(&mut self, solutions: &mut [T], select_n: usize, num_objectives: usize) {
         // We can select at most `select_n` solutions.
         let mut missing = cmp::min(solutions.len(), select_n);
 
@@ -84,99 +85,103 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGA
     }
 }
 
-
 /// Selection using NSGP as described in [1].
 /// 
 /// [1]: Multi-objective genetic programming with redundancy-regulations for automatic construction of image feature extractors.
 ///      Watchareeruetai, Ukrit and Matsumoto, Tetsuya and Takeuchi, Yoshinori and Hiroaki, KUDO and Ohnishi, Noboru.
 ///      2010
-pub fn select_nsgp<T, F, R>(solutions: &mut [T],
-                            select_n: usize,
-                            num_objectives: usize,
-                            rng: &mut R)
+pub struct SelectNSGP;
+
+impl<T, F> SelectSolutions<T, F> for SelectNSGP
     where T: CrowdingDistanceAssignment<F>,
-          F: MultiObjective + Domination + Eq,
-          R: Rng
+          F: MultiObjective + Domination + Eq
 {
-    // We can select at most `select_n` solutions.
-    let mut missing = cmp::min(solutions.len(), select_n);
+    fn select_solutions<R>(solutions: &mut [T],
+                           select_n: usize,
+                           num_objectives: usize,
+                           rng: &mut R)
+        where R: Rng
+    {
+        // We can select at most `select_n` solutions.
+        let mut missing = cmp::min(solutions.len(), select_n);
 
-    // make sure all solutions are unselected
-    for s in solutions.iter_mut() {
-        s.unselect();
-    }
+        // make sure all solutions are unselected
+        for s in solutions.iter_mut() {
+            s.unselect();
+        }
 
-    let pareto_fronts = FastNonDominatedSorter::new(solutions, &|s| s.fitness());
+        let pareto_fronts = FastNonDominatedSorter::new(solutions, &|s| s.fitness());
 
-    let mut fronts_grouped: Vec<Vec<Vec<_>>> = Vec::new();
-    for (rank, mut front) in pareto_fronts.enumerate() {
+        let mut fronts_grouped: Vec<Vec<Vec<_>>> = Vec::new();
+        for (rank, mut front) in pareto_fronts.enumerate() {
 
-        // first assign rank and crowding distance of those solutions in `front`.
-        crowding_distance_assignment(solutions, &mut front, rank as u32, num_objectives);
+            // first assign rank and crowding distance of those solutions in `front`.
+            crowding_distance_assignment(solutions, &mut front, rank as u32, num_objectives);
 
-        // then group this front into individuals with similar (or equal) fitness.
-        let mut groups: Vec<Vec<usize>> = Vec::new();
+            // then group this front into individuals with similar (or equal) fitness.
+            let mut groups: Vec<Vec<usize>> = Vec::new();
 
-        for idx in front {
-            // insert `idx` into a group.
-            // test fitness of `idx` (solutions[idx]) against a member of each group.
-            // if none fits, create a new group.
+            for idx in front {
+                // insert `idx` into a group.
+                // test fitness of `idx` (solutions[idx]) against a member of each group.
+                // if none fits, create a new group.
 
-            let mut insert_in = None;
-            for (i, grp) in groups.iter().enumerate() {
-                if solutions[idx].fitness().similar_to(solutions[grp[0]].fitness()) {
-                    insert_in = Some(i);
-                    break;
+                let mut insert_in = None;
+                for (i, grp) in groups.iter().enumerate() {
+                    if solutions[idx].fitness().similar_to(solutions[grp[0]].fitness()) {
+                        insert_in = Some(i);
+                        break;
+                    }
                 }
-            }
 
-            if let Some(i) = insert_in {
-                groups[i].push(idx);
-            } else {
-                groups.push(vec![idx]);
-            }
-        }
-
-        // update the crowding_distance within each group. simply take the average.
-        // also record the number of points in the group within each individual's fitness. this
-        // is required for sexual selection.
-        for grp in groups.iter() {
-            // use same average crowding distance for each point in the group
-            assert!(grp.len() > 0);
-            let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).sum::<f64>() /
-                           grp.len() as f64;
-            for &idx in grp.iter() {
-                solutions[idx].set_dist(avg);
-                solutions[idx].set_crowd(grp.len());
-            }
-        }
-
-        fronts_grouped.push(groups);
-    }
-
-    // Each pareto_front is now grouped into individuals of same (or similar) fitness.
-    // Now go through each front, and in each front, choose exactly one individual
-    // from each group. Then go to the next front etc. once we are through all
-    // fronts, continue with the first and so on, until enough individuals are selected.
-
-    'outer: while missing > 0 {
-        for current_front in fronts_grouped.iter_mut() {
-            // select up to `missing` solutions from current_front, but from each group only one
-            // (which is choosen randomly).
-            for grp in current_front.iter_mut() {
-                if missing > 0 {
-                    let i = rng.gen_range(0, grp.len());
-                    let idx = grp.swap_remove(i); // remove `i`th element from grp returning the solution index
-                    assert!(solutions[idx].is_selected() == false);
-                    solutions[idx].select();
-                    missing -= 1;
+                if let Some(i) = insert_in {
+                    groups[i].push(idx);
                 } else {
-                    break 'outer;
+                    groups.push(vec![idx]);
                 }
             }
 
-            // only retain groups which are non-empty
-            current_front.retain(|grp| grp.len() > 0);
+            // update the crowding_distance within each group. simply take the average.
+            // also record the number of points in the group within each individual's fitness. this
+            // is required for sexual selection.
+            for grp in groups.iter() {
+                // use same average crowding distance for each point in the group
+                assert!(grp.len() > 0);
+                let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).sum::<f64>() /
+                               grp.len() as f64;
+                for &idx in grp.iter() {
+                    solutions[idx].set_dist(avg);
+                    solutions[idx].set_crowd(grp.len());
+                }
+            }
+
+            fronts_grouped.push(groups);
+        }
+
+        // Each pareto_front is now grouped into individuals of same (or similar) fitness.
+        // Now go through each front, and in each front, choose exactly one individual
+        // from each group. Then go to the next front etc. once we are through all
+        // fronts, continue with the first and so on, until enough individuals are selected.
+
+        'outer: while missing > 0 {
+            for current_front in fronts_grouped.iter_mut() {
+                // select up to `missing` solutions from current_front, but from each group only one
+                // (which is choosen randomly).
+                for grp in current_front.iter_mut() {
+                    if missing > 0 {
+                        let i = rng.gen_range(0, grp.len());
+                        let idx = grp.swap_remove(i); // remove `i`th element from grp returning the solution index
+                        assert!(solutions[idx].is_selected() == false);
+                        solutions[idx].select();
+                        missing -= 1;
+                    } else {
+                        break 'outer;
+                    }
+                }
+
+                // only retain groups which are non-empty
+                current_front.retain(|grp| grp.len() > 0);
+            }
         }
     }
 }
