@@ -84,6 +84,10 @@ impl<G, F> Individual<G, F>
         }
     }
 
+    pub fn genome(&self) -> &G {
+        &self.genome
+    }
+
     pub fn fitness(&self) -> &F {
         self.fitness.as_ref().unwrap()
     }
