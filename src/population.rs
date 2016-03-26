@@ -184,6 +184,10 @@ impl<G, F> RatedPopulation<G, F>
         RankedPopulation { individuals: individuals }
     }
 
+    pub fn individuals(&self) -> &[Individual<G, F>] {
+        &self.individuals
+    }
+
     pub fn individuals_mut(&mut self) -> &mut [Individual<G, F>] {
         &mut self.individuals
     }
