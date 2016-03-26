@@ -156,7 +156,7 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
             // update the crowding_distance within each group. simply take the average.
             // also record the number of points in the group within each individual's fitness. this
             // is required for sexual selection.
-            for grp in groups.iter() {
+            for grp in groups.iter_mut() {
                 // use same average crowding distance for each point in the group
                 assert!(grp.len() > 0);
                 let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).sum::<f64>() /
@@ -165,23 +165,44 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
                     solutions[idx].set_dist(avg);
                     solutions[idx].set_crowd(grp.len());
                 }
+
+                // sort grp according to primary fitness
+                grp.sort_by(|&a, &b| {
+                    solutions[a].fitness().cmp_objective(solutions[b].fitness(), 0)
+                });
             }
+
+            // group fronts, so that the first group is the one which contains
+            // the best individual of fitness objective #0. this makes
+            // sure that we always ever include the elite 
+            groups.sort_by(|a, b| {
+                solutions[a[0]].fitness().cmp_objective(solutions[b[0]].fitness(), 0)
+            });
 
             fronts_grouped.push(groups);
         }
 
-        // Each pareto_front is now grouped into individuals of same (or similar) fitness.
+        // Each pareto_front has now been grouped into individuals of same (or similar) fitness.
         // Now go through each front, and in each front, choose exactly one individual
         // from each group. Then go to the next front etc. once we are through all
         // fronts, continue with the first and so on, until enough individuals are selected.
 
+        let mut round = 0;
         'outer: while missing > 0 {
-            for current_front in fronts_grouped.iter_mut() {
+            for (front_i, current_front) in fronts_grouped.iter_mut().enumerate() {
                 // select up to `missing` solutions from current_front, but from each group only one
                 // (which is choosen randomly).
-                for grp in current_front.iter_mut() {
+                for (grp_i, grp) in current_front.iter_mut().enumerate() {
                     if missing > 0 {
-                        let i = rng.gen_range(0, grp.len());
+                        let i = 
+                        if round == 0 && front_i == 0 && grp_i == 0{
+                            // first round, first group and non-dominated front. Use always the best according
+                            // to 0th objective. 
+                            0
+                        } else {
+                            // Select randomly
+                            rng.gen_range(0, grp.len())
+                        };
                         let idx = grp.swap_remove(i); // remove `i`th element from grp returning the solution index
                         assert!(solutions[idx].is_selected() == false);
                         solutions[idx].select();
@@ -194,6 +215,7 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
                 // only retain groups which are non-empty
                 current_front.retain(|grp| grp.len() > 0);
             }
+            round += 1;
         }
     }
 }
