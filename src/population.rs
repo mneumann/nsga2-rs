@@ -209,6 +209,15 @@ impl<G, F> RankedPopulation<G, F>
     where F: MultiObjective + Domination,
           G: Send
 {
+    pub fn into_unrated(self) -> UnratedPopulation<G, F> {
+        let RankedPopulation { individuals } = self;
+        let mut pop = UnratedPopulation::new();
+        for ind in individuals {
+            pop.push(ind.genome);
+        }
+        pop
+    }
+
     /// Generate an unrated offspring population.
     pub fn reproduce<R, M>(&self,
                            rng: &mut R,
@@ -245,13 +254,13 @@ impl<G, F> RankedPopulation<G, F>
 
                     // The potentially dominating individual is gives as first
                     // parameter.
-                    let (p1, p2) = if self.individuals[p1].has_better_rank_and_crowding(&self.individuals[p2]) {
-                        (p1, p2)
-                    } else if self.individuals[p2].has_better_rank_and_crowding(&self.individuals[p1]) {
-                        (p2, p1)
-                    } else {
-                        (p1, p2)
-                    };
+                    //let (p1, p2) = if self.individuals[p1].has_better_rank_and_crowding(&self.individuals[p2]) {
+                    //    (p1, p2)
+                    //} else if self.individuals[p2].has_better_rank_and_crowding(&self.individuals[p1]) {
+                    //    (p2, p1)
+                    //} else {
+                    //    (p1, p2)
+                    //};
 
                     Individual::from_genome(mate(rng, &self.individuals[p1].genome, &self.individuals[p2].genome))
                 })
