@@ -8,12 +8,12 @@ use std::cmp::{self, Ordering};
 pub trait SelectSolutions<T, F> : Sized
     where T: CrowdingDistanceAssignment<F>, F: MultiObjective + Domination,
 {
-    /// Select `n` out of the `solutions`, assigning rank and distance using the first `num_objectives`
-    /// objectives. `rng` might not be used.
+    /// Select `n` out of the `solutions`, assigning rank and distance using `objectives`.
+    /// `rng` might not be used.
     fn select_solutions<R>(&self,
                            solutions: &mut [T],
                            select_n: usize,
-                           num_objectives: usize,
+                           objectives: &[usize],
                            rng: &mut R)
         where R: Rng;
 }
@@ -29,10 +29,12 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGA
     fn select_solutions<R>(&self,
                            solutions: &mut [T],
                            select_n: usize,
-                           num_objectives: usize,
+                           objectives: &[usize],
                            _rng: &mut R)
         where R: Rng
     {
+        assert!(objectives.len() > 0);
+
         // We can select at most `select_n` solutions.
         let mut missing = cmp::min(solutions.len(), select_n);
 
@@ -41,16 +43,13 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGA
             s.unselect();
         }
 
-        let pareto_fronts = FastNonDominatedSorter::new(solutions, &|s| s.fitness());
+        let pareto_fronts = FastNonDominatedSorter::new(solutions, &|s| s.fitness(), objectives);
 
         for (rank, mut front) in pareto_fronts.enumerate() {
             assert!(missing > 0);
 
             // assign rank and crowding distance of those solutions in `front`.
-            let _ = crowding_distance_assignment(solutions,
-                                                 &mut front,
-                                                 rank as u32,
-                                                 num_objectives);
+            let _ = crowding_distance_assignment(solutions, &mut front, rank as u32, objectives);
 
             if front.len() <= missing {
                 // whole front fits into result. XXX: should we sort?
@@ -106,10 +105,12 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
     fn select_solutions<R>(&self,
                            solutions: &mut [T],
                            select_n: usize,
-                           num_objectives: usize,
+                           objectives: &[usize],
                            rng: &mut R)
         where R: Rng
     {
+        assert!(objectives.len() > 0);
+
         // We can select at most `select_n` solutions.
         let mut missing = cmp::min(solutions.len(), select_n);
 
@@ -118,7 +119,7 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
             s.unselect();
         }
 
-        let pareto_fronts = FastNonDominatedSorter::new(solutions, &|s| s.fitness());
+        let pareto_fronts = FastNonDominatedSorter::new(solutions, &|s| s.fitness(), objectives);
 
         let mut fronts_grouped: Vec<Vec<Vec<_>>> = Vec::new();
         for (rank, mut front) in pareto_fronts.enumerate() {
@@ -127,7 +128,8 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
             let min_max_distances = crowding_distance_assignment(solutions,
                                                                  &mut front,
                                                                  rank as u32,
-                                                                 num_objectives);
+                                                                 objectives);
+            debug_assert!(min_max_distances.len() == objectives.len());
 
             // then group this front into individuals with similar (or equal) fitness.
             let mut groups: Vec<Vec<usize>> = Vec::new();
@@ -142,6 +144,7 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
                     let cmp_idx = grp[0];
 
                     if fitness.similar_to(solutions[cmp_idx].fitness(),
+                                          &objectives,
                                           &min_max_distances,
                                           self.objective_eps) {
                         grp.push(idx);
@@ -168,15 +171,15 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
 
                 // sort grp according to primary fitness
                 grp.sort_by(|&a, &b| {
-                    solutions[a].fitness().cmp_objective(solutions[b].fitness(), 0)
+                    solutions[a].fitness().cmp_objective(solutions[b].fitness(), objectives[0])
                 });
             }
 
             // group fronts, so that the first group is the one which contains
             // the best individual of fitness objective #0. this makes
-            // sure that we always ever include the elite 
+            // sure that we always ever include the elite
             groups.sort_by(|a, b| {
-                solutions[a[0]].fitness().cmp_objective(solutions[b[0]].fitness(), 0)
+                solutions[a[0]].fitness().cmp_objective(solutions[b[0]].fitness(), objectives[0])
             });
 
             fronts_grouped.push(groups);
@@ -194,10 +197,9 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
                 // (which is choosen randomly).
                 for (grp_i, grp) in current_front.iter_mut().enumerate() {
                     if missing > 0 {
-                        let i = 
-                        if round == 0 && front_i == 0 && grp_i == 0{
+                        let i = if round == 0 && front_i == 0 && grp_i == 0 {
                             // first round, first group and non-dominated front. Use always the best according
-                            // to 0th objective. 
+                            // to 0th objective.
                             0
                         } else {
                             // Select randomly

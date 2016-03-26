@@ -58,13 +58,12 @@ pub trait CrowdingDistanceAssignment<F> where F: MultiObjective {
 pub fn crowding_distance_assignment<T, F>(solutions: &mut [T],
                                           front_indices: &mut Vec<usize>,
                                           common_rank: u32,
-                                          num_objectives: usize)
+                                          objectives: &[usize])
                                           -> Vec<f64>
     where T: CrowdingDistanceAssignment<F>,
           F: MultiObjective
 {
-    assert!(num_objectives > 0);
-    assert!(num_objectives <= F::NUM_OBJECTIVES);
+    assert!(objectives.len() > 0);
 
     // Initialize all solutions of that pareto front
     for &i in front_indices.iter() {
@@ -76,9 +75,9 @@ pub fn crowding_distance_assignment<T, F>(solutions: &mut [T],
 
     let l = front_indices.len();
 
-    let mut min_max_distances = Vec::with_capacity(num_objectives);
+    let mut min_max_distances = Vec::with_capacity(objectives.len());
 
-    for m in 0..num_objectives {
+    for &m in objectives.iter() {
         // sort front_indices according to objective `m`
         front_indices.sort_by(|&a, &b| {
             solutions[a].fitness().cmp_objective(solutions[b].fitness(), m)
@@ -98,7 +97,7 @@ pub fn crowding_distance_assignment<T, F>(solutions: &mut [T],
         min_max_distances.push(dist_max_min);
         debug_assert!(dist_max_min >= 0.0);
         if dist_max_min != 0.0 {
-            let norm = num_objectives as f64 * dist_max_min;
+            let norm = objectives.len() as f64 * dist_max_min;
             debug_assert!(norm != 0.0);
             for i in 1..(l - 1) {
                 let prev_idx = front_indices[i - 1];

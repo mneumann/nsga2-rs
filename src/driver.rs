@@ -10,7 +10,7 @@ pub struct DriverConfig {
     pub lambda: usize,
     pub k: usize,
     pub ngen: usize,
-    pub num_objectives: usize,
+    pub objectives: Vec<usize>,
     pub parallel_weight: f64,
 }
 
@@ -82,7 +82,7 @@ pub trait Driver: Sync
         // apply a population metric on the whole population
         self.population_metric(&mut next_generation);
 
-        next_generation.select(config.mu, config.num_objectives, selection, rng)
+        next_generation.select(config.mu, &config.objectives, selection, rng)
     }
 
     fn run<R, L>(&self,

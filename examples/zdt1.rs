@@ -191,7 +191,7 @@ fn main() {
         lambda: 100, // size of offspring population
         k: 2, // tournament
         ngen: 2, // max number of generations
-        num_objectives: 2, // number of objectives
+        objectives: vec![0, 1], // objectives to use
         parallel_weight: 1.0, // rayon's weight
     };
 

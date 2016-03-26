@@ -4,27 +4,15 @@ use std::convert::From;
 use domination::Domination;
 
 pub trait MultiObjective: Send {
-    const NUM_OBJECTIVES: usize;
-
     fn cmp_objective(&self, other: &Self, objective: usize) -> Ordering;
 
     /// Calculates the distance of objective between self and other
     fn dist_objective(&self, other: &Self, objective: usize) -> f64;
 
-    fn cmp(&self, other: &Self) -> Ordering {
-        for i in 0..Self::NUM_OBJECTIVES {
-            match self.cmp_objective(other, i) {
-                Ordering::Equal => {}
-                ordering => return ordering
-            }
-        }
-        Ordering::Equal
-    }
-
-    fn similar_to(&self, other: &Self, min_max_objective_distances: &[f64], objective_eps: f64) -> bool {
-        debug_assert!(min_max_objective_distances.len() == Self::NUM_OBJECTIVES);
+    fn similar_to(&self, other: &Self, objectives: &[usize], min_max_objective_distances: &[f64], objective_eps: f64) -> bool {
+        assert!(objectives.len() == min_max_objective_distances.len());
         let mut eq_cnt = 0;
-        for (i, &min_max_dist) in min_max_objective_distances.iter().enumerate() {
+        for (&i, &min_max_dist) in objectives.iter().zip(min_max_objective_distances.iter()) {
             let dist = self.dist_objective(other, i).abs();
             if min_max_dist == 0.0 {
                 if dist == 0.0 { // XXX: This could be removed, as it should be equal
@@ -39,7 +27,7 @@ pub trait MultiObjective: Send {
                 }
             }
         }
-        eq_cnt == min_max_objective_distances.len()
+        eq_cnt == objectives.len()
     }
 }
 
@@ -63,8 +51,6 @@ impl<T, R> MultiObjective for MultiObjective2<T>
     where T: Copy + PartialOrd + Sub<Output = R> + Send,
           R: Into<f64>
 {
-    const NUM_OBJECTIVES: usize = 2;
-
     #[inline]
     fn cmp_objective(&self, other: &Self, objective: usize) -> Ordering {
         self.objectives[objective].partial_cmp(&other.objectives[objective]).unwrap()
@@ -75,11 +61,11 @@ impl<T, R> MultiObjective for MultiObjective2<T>
     }
 }
 
-pub fn dominates_helper<T>(lhs: &T, rhs: &T) -> bool
+pub fn dominates_helper<T>(lhs: &T, rhs: &T, objectives: &[usize]) -> bool
     where T: MultiObjective
 {
     let mut less_cnt = 0;
-    for i in 0..T::NUM_OBJECTIVES {
+    for &i in objectives.iter() {
         match lhs.cmp_objective(rhs, i) {
             Ordering::Greater => {
                 return false;
@@ -97,8 +83,8 @@ impl<T, R> Domination for MultiObjective2<T>
     where T: Copy + PartialOrd + Sub<Output = R> + Send,
           R: Into<f64>
 {
-    fn dominates(&self, other: &Self) -> bool {
-        dominates_helper(self, other)
+    fn dominates(&self, other: &Self, objectives: &[usize]) -> bool {
+        dominates_helper(self, other, objectives)
     }
 }
 
@@ -108,15 +94,15 @@ fn test_dominates() {
     let b = MultiObjective2::from((0.1f32, 0.1));
     let c = MultiObjective2::from((0.1f32, 1.0));
 
-    assert_eq!(false, a.dominates(&a));
-    assert_eq!(false, a.dominates(&b));
-    assert_eq!(false, a.dominates(&c));
+    assert_eq!(false, a.dominates(&a, &[0,1]));
+    assert_eq!(false, a.dominates(&b, &[0,1]));
+    assert_eq!(false, a.dominates(&c, &[0,1]));
 
-    assert_eq!(true, b.dominates(&a));
-    assert_eq!(false, b.dominates(&b));
-    assert_eq!(true, b.dominates(&c));
+    assert_eq!(true, b.dominates(&a, &[0,1]));
+    assert_eq!(false, b.dominates(&b, &[0,1]));
+    assert_eq!(true, b.dominates(&c, &[0,1]));
 
-    assert_eq!(false, c.dominates(&a));
-    assert_eq!(false, c.dominates(&b));
-    assert_eq!(false, c.dominates(&c));
+    assert_eq!(false, c.dominates(&a, &[0,1]));
+    assert_eq!(false, c.dominates(&b, &[0,1]));
+    assert_eq!(false, c.dominates(&c, &[0,1]));
 }
