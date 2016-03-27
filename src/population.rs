@@ -88,6 +88,10 @@ impl<G, F> Individual<G, F>
         &self.genome
     }
 
+    pub fn into_genome(self) -> G {
+        self.genome
+    }
+
     pub fn fitness(&self) -> &F {
         self.fitness.as_ref().unwrap()
     }
@@ -129,6 +133,16 @@ impl<G, F> UnratedPopulation<G, F>
 {
     pub fn individuals(&self) -> &[Individual<G, F>] {
         &self.individuals
+    }
+
+    pub fn as_vec(self) -> Vec<Individual<G, F>> {
+        self.individuals
+    }
+
+    pub fn merge(self, other: Self) -> Self {
+        let mut ind = self.individuals;
+        ind.extend(other.individuals.into_iter());
+        UnratedPopulation { individuals: ind }
     }
 
     pub fn new() -> Self {
