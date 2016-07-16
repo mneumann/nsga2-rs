@@ -1,4 +1,3 @@
-#![feature(associated_consts, iter_arith)]
 extern crate rand;
 extern crate rayon;
 extern crate time;

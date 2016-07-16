@@ -162,7 +162,7 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
             for grp in groups.iter_mut() {
                 // use same average crowding distance for each point in the group
                 assert!(grp.len() > 0);
-                let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).sum::<f64>() /
+                let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).fold(0.0, |acc, x| acc+x) /
                                grp.len() as f64;
                 for &idx in grp.iter() {
                     solutions[idx].set_dist(avg);
@@ -296,7 +296,7 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGPMod
                 for grp in groups.iter_mut() {
                     // use same average crowding distance for each point in the group
                     assert!(grp.len() > 0);
-                    let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).sum::<f64>() /
+                    let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).fold(0.0, |acc, x| acc+x) /
                                    grp.len() as f64;
                     for &idx in grp.iter() {
                         solutions[idx].set_dist(avg);
