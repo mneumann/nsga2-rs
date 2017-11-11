@@ -8,8 +8,9 @@ use rand::Rng;
 use std::u32;
 
 pub struct Individual<G, F>
-    where F: MultiObjective + Domination,
-          G: Send
+where
+    F: MultiObjective + Domination,
+    G: Send,
 {
     genome: G,
 
@@ -30,8 +31,9 @@ pub struct Individual<G, F>
 }
 
 impl<G, F> CrowdingDistanceAssignment<F> for Individual<G, F>
-    where F: MultiObjective + Domination,
-          G: Send
+where
+    F: MultiObjective + Domination,
+    G: Send,
 {
     fn fitness(&self) -> &F {
         self.fitness.as_ref().unwrap()
@@ -70,8 +72,9 @@ impl<G, F> CrowdingDistanceAssignment<F> for Individual<G, F>
 }
 
 impl<G, F> Individual<G, F>
-    where F: MultiObjective + Domination,
-          G: Send
+where
+    F: MultiObjective + Domination,
+    G: Send,
 {
     fn from_genome(genome: G) -> Self {
         Individual {
@@ -103,8 +106,9 @@ impl<G, F> Individual<G, F>
 /// An unrated Population of individuals.
 
 pub struct UnratedPopulation<G, F>
-    where F: MultiObjective + Domination,
-          G: Send
+where
+    F: MultiObjective + Domination,
+    G: Send,
 {
     individuals: Vec<Individual<G, F>>,
 }
@@ -112,8 +116,9 @@ pub struct UnratedPopulation<G, F>
 /// A rated Population of individuals, i.e. each individual has a fitness assigned.
 
 pub struct RatedPopulation<G, F>
-    where F: MultiObjective + Domination,
-          G: Send
+where
+    F: MultiObjective + Domination,
+    G: Send,
 {
     individuals: Vec<Individual<G, F>>,
 }
@@ -121,15 +126,17 @@ pub struct RatedPopulation<G, F>
 /// A ranked (selected) Population (pareto_rank and crowding_distance).
 
 pub struct RankedPopulation<G, F>
-    where F: MultiObjective + Domination,
-          G: Send
+where
+    F: MultiObjective + Domination,
+    G: Send,
 {
     individuals: Vec<Individual<G, F>>,
 }
 
 impl<G, F> UnratedPopulation<G, F>
-    where F: MultiObjective + Domination,
-          G: Send
+where
+    F: MultiObjective + Domination,
+    G: Send,
 {
     pub fn individuals(&self) -> &[Individual<G, F>] {
         &self.individuals
@@ -160,7 +167,8 @@ impl<G, F> UnratedPopulation<G, F>
     /// Rate the individuals in parallel.
 
     pub fn rate_in_parallel<E>(self, eval: &E, weight: f64) -> RatedPopulation<G, F>
-        where E: Fn(&G) -> F + Sync
+    where
+        E: Fn(&G) -> F + Sync,
     {
         let UnratedPopulation { mut individuals } = self;
 
@@ -175,12 +183,20 @@ impl<G, F> UnratedPopulation<G, F>
 }
 
 impl<G, F> RatedPopulation<G, F>
-    where F: MultiObjective + Domination,
-          G: Send
+where
+    F: MultiObjective + Domination,
+    G: Send,
 {
-    pub fn select<S, R>(self, population_size: usize, objectives: &[usize], selection: &S, rng: &mut R) -> RankedPopulation<G, F>
-        where S: SelectSolutions<Individual<G, F>, F>,
-              R: Rng
+    pub fn select<S, R>(
+        self,
+        population_size: usize,
+        objectives: &[usize],
+        selection: &S,
+        rng: &mut R,
+    ) -> RankedPopulation<G, F>
+    where
+        S: SelectSolutions<Individual<G, F>, F>,
+        R: Rng,
     {
         let RatedPopulation { mut individuals } = self;
 
@@ -190,7 +206,7 @@ impl<G, F> RatedPopulation<G, F>
         // only keep individuals which are selected
         individuals.retain(|i| i.is_selected());
 
-        // sort by rank and crowding-distance 
+        // sort by rank and crowding-distance
         individuals.sort_by(|a, b| a.rank_and_crowding_order(b));
 
         assert!(individuals.len() == population_size);
@@ -224,8 +240,9 @@ impl<G, F> RatedPopulation<G, F>
 }
 
 impl<G, F> RankedPopulation<G, F>
-    where F: MultiObjective + Domination,
-          G: Send
+where
+    F: MultiObjective + Domination,
+    G: Send,
 {
     pub fn into_unrated(self) -> UnratedPopulation<G, F> {
         let RankedPopulation { individuals } = self;
@@ -237,14 +254,16 @@ impl<G, F> RankedPopulation<G, F>
     }
 
     /// Generate an unrated offspring population.
-    pub fn reproduce<R, M>(&self,
-                           rng: &mut R,
-                           offspring_size: usize,
-                           tournament_k: usize,
-                           mate: &M)
-                           -> UnratedPopulation<G, F>
-        where R: Rng,
-              M: Fn(&mut R, &G, &G) -> G
+    pub fn reproduce<R, M>(
+        &self,
+        rng: &mut R,
+        offspring_size: usize,
+        tournament_k: usize,
+        mate: &M,
+    ) -> UnratedPopulation<G, F>
+    where
+        R: Rng,
+        M: Fn(&mut R, &G, &G) -> G,
     {
         assert!(tournament_k > 0);
         assert!(self.len() > 0);
@@ -257,7 +276,7 @@ impl<G, F> RankedPopulation<G, F>
 
                     // first parent. k candidates
                     let p1 = tournament_selection_fast(rng,
-                                                       |i1, i2| self.individuals[i1].has_better_rank_and_crowding(&self.individuals[i2]),
+                                                       |i1, i2|self.individuals[i1].has_better_rank_and_crowding(&self.individuals[i2]),
                                                        self.len(),
                                                        tournament_k);
 
@@ -300,7 +319,7 @@ impl<G, F> RankedPopulation<G, F>
     /// Merging a ranked population with a rated population results in a rated population as the selection
     /// criteria is no longer met.
     pub fn merge(self, offspring: RatedPopulation<G, F>) -> RatedPopulation<G, F> {
-        let RankedPopulation{mut individuals} = self;
+        let RankedPopulation { mut individuals } = self;
 
         // XXX: Reset rank and crowding distance.
 
@@ -310,7 +329,8 @@ impl<G, F> RankedPopulation<G, F>
     }
 
     pub fn all<C>(&self, f: &mut C)
-        where C: FnMut(&G, &F)
+    where
+        C: FnMut(&G, &F),
     {
         for ind in &self.individuals {
             f(&ind.genome, ind.fitness.as_ref().unwrap());
@@ -318,11 +338,16 @@ impl<G, F> RankedPopulation<G, F>
     }
 
     pub fn max_rank(&self) -> Option<usize> {
-        self.individuals.iter().map(|ind| ind.pareto_rank).max().map(|r| r as usize)
+        self.individuals
+            .iter()
+            .map(|ind| ind.pareto_rank)
+            .max()
+            .map(|r| r as usize)
     }
 
     pub fn all_of_rank<C>(&self, rank: usize, f: &mut C)
-        where C: FnMut(&G, &F)
+    where
+        C: FnMut(&G, &F),
     {
         for ind in &self.individuals {
             if ind.pareto_rank as usize == rank {

@@ -29,8 +29,7 @@ fn sbx_beta(u: f32, eta: f32) -> f32 {
         2.0 * u
     } else {
         1.0 / (2.0 * (1.0 - u))
-    }
-    .powf(1.0 / (eta + 1.0))
+    }.powf(1.0 / (eta + 1.0))
 }
 
 #[inline]
@@ -44,8 +43,7 @@ fn sbx_beta_bounded(u: f32, eta: f32, gamma: f32) -> f32 {
         2.0 * ug
     } else {
         1.0 / (2.0 * (1.0 - ug))
-    }
-    .powf(1.0 / (eta + 1.0))
+    }.powf(1.0 / (eta + 1.0))
 }
 
 #[inline]
@@ -53,16 +51,19 @@ pub fn sbx_single_var<R: Rng>(rng: &mut R, p: (f32, f32), eta: f32) -> (f32, f32
     let u = rng.gen::<f32>();
     let beta = sbx_beta(u, eta);
 
-    (0.5 * (((1.0 + beta) * p.0) + ((1.0 - beta) * p.1)),
-     0.5 * (((1.0 - beta) * p.0) + ((1.0 + beta) * p.1)))
+    (
+        0.5 * (((1.0 + beta) * p.0) + ((1.0 - beta) * p.1)),
+        0.5 * (((1.0 - beta) * p.0) + ((1.0 + beta) * p.1)),
+    )
 }
 
 #[inline]
-fn _sbx_single_var_bounded<R: Rng>(rng: &mut R,
-                                   p: (f32, f32),
-                                   bounds: (f32, f32),
-                                   eta: f32)
-                                   -> (f32, f32) {
+fn _sbx_single_var_bounded<R: Rng>(
+    rng: &mut R,
+    p: (f32, f32),
+    bounds: (f32, f32),
+    eta: f32,
+) -> (f32, f32) {
     let (a, b) = bounds;
     let p_diff = p.1 - p.0;
 
@@ -85,8 +86,10 @@ fn _sbx_single_var_bounded<R: Rng>(rng: &mut R,
     let beta_ua = sbx_beta_bounded(u, eta, gamma_a);
     let beta_ub = sbx_beta_bounded(u, eta, gamma_b);
 
-    let c = (0.5 * (((1.0 + beta_ua) * p.0) + ((1.0 - beta_ua) * p.1)),
-             0.5 * (((1.0 - beta_ub) * p.0) + ((1.0 + beta_ub) * p.1)));
+    let c = (
+        0.5 * (((1.0 + beta_ua) * p.0) + ((1.0 - beta_ua) * p.1)),
+        0.5 * (((1.0 - beta_ub) * p.0) + ((1.0 + beta_ub) * p.1)),
+    );
 
     assert!(c.0 >= a && c.0 <= b);
     assert!(c.1 >= a && c.1 <= b);
@@ -95,11 +98,12 @@ fn _sbx_single_var_bounded<R: Rng>(rng: &mut R,
 }
 
 #[inline]
-pub fn sbx_single_var_bounded<R: Rng>(rng: &mut R,
-                                      p: (f32, f32),
-                                      bounds: (f32, f32),
-                                      eta: f32)
-                                      -> (f32, f32) {
+pub fn sbx_single_var_bounded<R: Rng>(
+    rng: &mut R,
+    p: (f32, f32),
+    bounds: (f32, f32),
+    eta: f32,
+) -> (f32, f32) {
     if p.0 < p.1 {
         _sbx_single_var_bounded(rng, (p.0, p.1), bounds, eta)
     } else if p.0 > p.1 {
@@ -139,18 +143,16 @@ impl ZdtGenome {
 
     fn crossover1<R: Rng>(rng: &mut R, parents: (&Self, &Self), eta: f32) -> Self {
         assert!(parents.0.len() == parents.1.len());
-        let xs: Vec<_> = parents.0
-                                .xs
-                                .iter()
-                                .zip(parents.1.xs.iter())
-                                .map(|(&x1, &x2)| {
-                                    let (c1, _c2) = sbx_single_var_bounded(rng,
-                                                                           (x1, x2),
-                                                                           (0.0, 1.0),
-                                                                           eta);
-                                    c1
-                                })
-                                .collect();
+        let xs: Vec<_> = parents
+            .0
+            .xs
+            .iter()
+            .zip(parents.1.xs.iter())
+            .map(|(&x1, &x2)| {
+                let (c1, _c2) = sbx_single_var_bounded(rng, (x1, x2), (0.0, 1.0), eta);
+                c1
+            })
+            .collect();
         ZdtGenome::new(xs)
     }
 }
@@ -165,7 +167,10 @@ impl Driver for ZdtDriver {
     type FIT = MultiObjective2<f32>;
     type SELECTION = SelectNSGA;
 
-    fn random_genome<R>(&self, rng: &mut R) -> Self::GENOME where R: Rng{
+    fn random_genome<R>(&self, rng: &mut R) -> Self::GENOME
+    where
+        R: Rng,
+    {
         ZdtGenome::random(rng, self.zdt_order)
     }
 
@@ -173,7 +178,10 @@ impl Driver for ZdtDriver {
         ind.fitness()
     }
 
-    fn mate<R>(&self, rng: &mut R, parent1: &Self::GENOME, parent2: &Self::GENOME) -> Self::GENOME where R: Rng{
+    fn mate<R>(&self, rng: &mut R, parent1: &Self::GENOME, parent2: &Self::GENOME) -> Self::GENOME
+    where
+        R: Rng,
+    {
         ZdtGenome::crossover1(rng, (parent1, parent2), self.mating_eta)
     }
 }
@@ -203,10 +211,9 @@ fn main() {
 
         println!("x\ty");
         let mut xys = Vec::new();
-        final_population.all_of_rank(rank,
-                                     &mut |_, fitness| {
-                                         xys.push((fitness.objectives[0], fitness.objectives[1]));
-                                     });
+        final_population.all_of_rank(rank, &mut |_, fitness| {
+            xys.push((fitness.objectives[0], fitness.objectives[1]));
+        });
 
         xys.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         for &(x, y) in xys.iter() {

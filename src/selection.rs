@@ -5,17 +5,21 @@ use sort::FastNonDominatedSorter;
 use crowding_distance::{crowding_distance_assignment, CrowdingDistanceAssignment};
 use std::cmp::{self, Ordering};
 
-pub trait SelectSolutions<T, F> : Sized
-    where T: CrowdingDistanceAssignment<F>, F: MultiObjective + Domination,
+pub trait SelectSolutions<T, F>: Sized
+where
+    T: CrowdingDistanceAssignment<F>,
+    F: MultiObjective + Domination,
 {
     /// Select `n` out of the `solutions`, assigning rank and distance using `objectives`.
     /// `rng` might not be used.
-    fn select_solutions<R>(&self,
-                           solutions: &mut [T],
-                           select_n: usize,
-                           objectives: &[usize],
-                           rng: &mut R)
-        where R: Rng;
+    fn select_solutions<R>(
+        &self,
+        solutions: &mut [T],
+        select_n: usize,
+        objectives: &[usize],
+        rng: &mut R,
+    ) where
+        R: Rng;
 }
 
 
@@ -23,15 +27,18 @@ pub trait SelectSolutions<T, F> : Sized
 pub struct SelectNSGA;
 
 impl<T, F> SelectSolutions<T, F> for SelectNSGA
-    where T: CrowdingDistanceAssignment<F>,
-          F: MultiObjective + Domination
+where
+    T: CrowdingDistanceAssignment<F>,
+    F: MultiObjective + Domination,
 {
-    fn select_solutions<R>(&self,
-                           solutions: &mut [T],
-                           select_n: usize,
-                           objectives: &[usize],
-                           _rng: &mut R)
-        where R: Rng
+    fn select_solutions<R>(
+        &self,
+        solutions: &mut [T],
+        select_n: usize,
+        objectives: &[usize],
+        _rng: &mut R,
+    ) where
+        R: Rng,
     {
         assert!(objectives.len() > 0);
 
@@ -90,24 +97,27 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGA
 }
 
 /// Selection using NSGP as described in [1].
-/// 
-/// [1]: Multi-objective genetic programming with redundancy-regulations for automatic construction of image feature extractors.
-///      Watchareeruetai, Ukrit and Matsumoto, Tetsuya and Takeuchi, Yoshinori and Hiroaki, KUDO and Ohnishi, Noboru.
-///      2010
+///
+/// [1]: Multi-objective genetic programming with redundancy-regulations for automatic construction
+/// of image feature extractors.  Watchareeruetai, Ukrit and Matsumoto, Tetsuya and Takeuchi,
+/// Yoshinori and Hiroaki, KUDO and Ohnishi, Noboru.  2010
 pub struct SelectNSGP {
     pub objective_eps: f64,
 }
 
 impl<T, F> SelectSolutions<T, F> for SelectNSGP
-    where T: CrowdingDistanceAssignment<F>,
-          F: MultiObjective + Domination
+where
+    T: CrowdingDistanceAssignment<F>,
+    F: MultiObjective + Domination,
 {
-    fn select_solutions<R>(&self,
-                           solutions: &mut [T],
-                           select_n: usize,
-                           objectives: &[usize],
-                           rng: &mut R)
-        where R: Rng
+    fn select_solutions<R>(
+        &self,
+        solutions: &mut [T],
+        select_n: usize,
+        objectives: &[usize],
+        rng: &mut R,
+    ) where
+        R: Rng,
     {
         assert!(objectives.len() > 0);
 
@@ -125,10 +135,8 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
         for (rank, mut front) in pareto_fronts.enumerate() {
 
             // first assign rank and crowding distance of those solutions in `front`.
-            let min_max_distances = crowding_distance_assignment(solutions,
-                                                                 &mut front,
-                                                                 rank as u32,
-                                                                 objectives);
+            let min_max_distances =
+                crowding_distance_assignment(solutions, &mut front, rank as u32, objectives);
             debug_assert!(min_max_distances.len() == objectives.len());
 
             // then group this front into individuals with similar (or equal) fitness.
@@ -143,10 +151,13 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
                 for grp in groups.iter_mut() {
                     let cmp_idx = grp[0];
 
-                    if fitness.similar_to(solutions[cmp_idx].fitness(),
-                                          &objectives,
-                                          &min_max_distances,
-                                          self.objective_eps) {
+                    if fitness.similar_to(
+                        solutions[cmp_idx].fitness(),
+                        &objectives,
+                        &min_max_distances,
+                        self.objective_eps,
+                    )
+                    {
                         grp.push(idx);
                         continue 'group;
                     }
@@ -162,8 +173,10 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
             for grp in groups.iter_mut() {
                 // use same average crowding distance for each point in the group
                 assert!(grp.len() > 0);
-                let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).fold(0.0, |acc, x| acc+x) /
-                               grp.len() as f64;
+                let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).fold(
+                    0.0,
+                    |acc, x| acc + x,
+                ) / grp.len() as f64;
                 for &idx in grp.iter() {
                     solutions[idx].set_dist(avg);
                     solutions[idx].set_crowd(grp.len());
@@ -171,7 +184,10 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
 
                 // sort grp according to primary fitness
                 grp.sort_by(|&a, &b| {
-                    solutions[a].fitness().cmp_objective(solutions[b].fitness(), objectives[0])
+                    solutions[a].fitness().cmp_objective(
+                        solutions[b].fitness(),
+                        objectives[0],
+                    )
                 });
             }
 
@@ -179,7 +195,10 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
             // the best individual of fitness objective #0. this makes
             // sure that we always ever include the elite
             groups.sort_by(|a, b| {
-                solutions[a[0]].fitness().cmp_objective(solutions[b[0]].fitness(), objectives[0])
+                solutions[a[0]].fitness().cmp_objective(
+                    solutions[b[0]].fitness(),
+                    objectives[0],
+                )
             });
 
             fronts_grouped.push(groups);
@@ -198,14 +217,15 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGP
                 for (grp_i, grp) in current_front.iter_mut().enumerate() {
                     if missing > 0 {
                         let i = if round == 0 && front_i == 0 && grp_i == 0 {
-                            // first round, first group and non-dominated front. Use always the best according
-                            // to 0th objective.
+                            // first round, first group and non-dominated front.
+                            // Use always the best according to 0th objective.
                             0
                         } else {
                             // Select randomly
                             rng.gen_range(0, grp.len())
                         };
-                        let idx = grp.swap_remove(i); // remove `i`th element from grp returning the solution index
+                        // remove `i`th element from grp returning the solution index
+                        let idx = grp.swap_remove(i);
                         assert!(solutions[idx].is_selected() == false);
                         solutions[idx].select();
                         missing -= 1;
@@ -229,15 +249,18 @@ pub struct SelectNSGPMod {
 }
 
 impl<T, F> SelectSolutions<T, F> for SelectNSGPMod
-    where T: CrowdingDistanceAssignment<F>,
-          F: MultiObjective + Domination
+where
+    T: CrowdingDistanceAssignment<F>,
+    F: MultiObjective + Domination,
 {
-    fn select_solutions<R>(&self,
-                           solutions: &mut [T],
-                           select_n: usize,
-                           objectives: &[usize],
-                           rng: &mut R)
-        where R: Rng
+    fn select_solutions<R>(
+        &self,
+        solutions: &mut [T],
+        select_n: usize,
+        objectives: &[usize],
+        rng: &mut R,
+    ) where
+        R: Rng,
     {
         assert!(objectives.len() > 0);
 
@@ -253,12 +276,10 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGPMod
 
         let mut fronts_grouped: Vec<Vec<Vec<Vec<_>>>> = Vec::new();
         for (rank, mut front) in pareto_fronts.enumerate() {
-
-            // first assign rank and crowding distance of those solutions in `front`.
-            let min_max_distances = crowding_distance_assignment(solutions,
-                                                                 &mut front,
-                                                                 rank as u32,
-                                                                 objectives);
+            // first assign rank and crowding distance of
+            // those solutions in `front`.
+            let min_max_distances =
+                crowding_distance_assignment(solutions, &mut front, rank as u32, objectives);
             debug_assert!(min_max_distances.len() == objectives.len());
 
             // then group this front into individuals with similar (or equal) fitness.
@@ -277,10 +298,13 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGPMod
                     for grp in groups.iter_mut() {
                         let cmp_idx = grp[0];
 
-                        if fitness.similar_to(solutions[cmp_idx].fitness(),
-                                              &[obj],
-                                              &[min_max],
-                                              self.objective_eps) {
+                        if fitness.similar_to(
+                            solutions[cmp_idx].fitness(),
+                            &[obj],
+                            &[min_max],
+                            self.objective_eps,
+                        )
+                        {
                             grp.push(idx);
                             continue 'group;
                         }
@@ -296,8 +320,10 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGPMod
                 for grp in groups.iter_mut() {
                     // use same average crowding distance for each point in the group
                     assert!(grp.len() > 0);
-                    let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).fold(0.0, |acc, x| acc+x) /
-                                   grp.len() as f64;
+                    let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).fold(
+                        0.0,
+                        |acc, x| acc + x,
+                    ) / grp.len() as f64;
                     for &idx in grp.iter() {
                         solutions[idx].set_dist(avg);
                         solutions[idx].set_crowd(grp.len()); // XXX
@@ -305,7 +331,10 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGPMod
 
                     // sort grp according to objective
                     grp.sort_by(|&a, &b| {
-                        solutions[a].fitness().cmp_objective(solutions[b].fitness(), obj)
+                        solutions[a].fitness().cmp_objective(
+                            solutions[b].fitness(),
+                            obj,
+                        )
                     });
                 }
 
@@ -313,7 +342,10 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGPMod
                 // the best individual of fitness objective #0. this makes
                 // sure that we always ever include the elite
                 groups.sort_by(|a, b| {
-                    solutions[a[0]].fitness().cmp_objective(solutions[b[0]].fitness(), obj)
+                    solutions[a[0]].fitness().cmp_objective(
+                        solutions[b[0]].fitness(),
+                        obj,
+                    )
                 });
 
                 objective_groups.push(groups);
@@ -341,12 +373,12 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGPMod
                                     break;
                                 }
                                 //let i = if round == 0 && front_i == 0 && grp_i == 0 { // XXX?
-                                    // first round, first group and non-dominated front. Use always the best according
-                                    // to 0th objective.
-                                let i=rng.gen_range(0, grp.len());
+                                // first round, first group and non-dominated front. Use always the best according
+                                // to 0th objective.
+                                let i = rng.gen_range(0, grp.len());
                                 //} else {
-                                    // Select randomly
-                                    //rng.gen_range(0, grp.len())
+                                // Select randomly
+                                //rng.gen_range(0, grp.len())
                                 //};
                                 let idx = grp.swap_remove(i); // remove `i`th element from grp returning the solution index
                                 if !solutions[idx].is_selected() {
@@ -379,12 +411,14 @@ impl<T, F> SelectSolutions<T, F> for SelectNSGPMod
 /// Instead we call `rng.gen_range()` k-times. The drawn items could be the same,
 /// but the probability is very low if `n` is high compared to `k`.
 #[inline]
-pub fn tournament_selection_fast<R: Rng, F>(rng: &mut R,
-                                            better_than: F,
-                                            n: usize,
-                                            k: usize)
-                                            -> usize
-    where F: Fn(usize, usize) -> bool
+pub fn tournament_selection_fast<R: Rng, F>(
+    rng: &mut R,
+    better_than: F,
+    n: usize,
+    k: usize,
+) -> usize
+where
+    F: Fn(usize, usize) -> bool,
 {
     assert!(n > 0);
     assert!(k > 0);

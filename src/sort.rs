@@ -14,17 +14,15 @@ impl FastNonDominatedSorter {
     /// Each pareto front (the indices of the `solutions`) can be obtained by calling `next()`.
 
     pub fn new<T, FIT, MAP>(solutions: &[T], map: &MAP, objectives: &[usize]) -> Self
-        where MAP: Fn(&T) -> &FIT,
-              FIT: Domination
+    where
+        MAP: Fn(&T) -> &FIT,
+        FIT: Domination,
     {
         let mut current_front = Vec::new();
-        let mut domination_count: Vec<usize> = solutions.iter()
-                                                        .map(|_| 0)
-                                                        .collect();
+        let mut domination_count: Vec<usize> = solutions.iter().map(|_| 0).collect();
 
-        let mut dominated_solutions: Vec<Vec<usize>> = solutions.iter()
-                                                                .map(|_| Vec::new())
-                                                                .collect();
+        let mut dominated_solutions: Vec<Vec<usize>> =
+            solutions.iter().map(|_| Vec::new()).collect();
 
         for i in 0..solutions.len() {
             for j in i + 1..solutions.len() {
@@ -100,11 +98,13 @@ impl Iterator for FastNonDominatedSorter {
     }
 }
 
-pub fn fast_non_dominated_sort<T>(solutions: &[T],
-                                  n: usize,
-                                  objectives: &[usize])
-                                  -> Vec<Vec<usize>>
-    where T: Domination
+pub fn fast_non_dominated_sort<T>(
+    solutions: &[T],
+    n: usize,
+    objectives: &[usize],
+) -> Vec<Vec<usize>>
+where
+    T: Domination,
 {
     let sorter = FastNonDominatedSorter::new(solutions, &|f| f, objectives);
     let mut found_solutions: usize = 0;

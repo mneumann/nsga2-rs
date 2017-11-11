@@ -2,7 +2,10 @@ use multi_objective::MultiObjective;
 use std::f64::INFINITY;
 use std::cmp::Ordering;
 
-pub trait CrowdingDistanceAssignment<F> where F: MultiObjective {
+pub trait CrowdingDistanceAssignment<F>
+where
+    F: MultiObjective,
+{
     fn fitness(&self) -> &F;
     fn rank_mut(&mut self) -> &mut u32;
     fn dist_mut(&mut self) -> &mut f64;
@@ -30,7 +33,7 @@ pub trait CrowdingDistanceAssignment<F> where F: MultiObjective {
     #[inline]
     fn has_better_rank_and_crowding(&self, other: &Self) -> bool {
         (self.rank() < other.rank()) ||
-        ((self.rank() == other.rank()) && self.dist() > other.dist())
+            ((self.rank() == other.rank()) && self.dist() > other.dist())
     }
 
     #[inline]
@@ -55,13 +58,15 @@ pub trait CrowdingDistanceAssignment<F> where F: MultiObjective {
 
 /// Modifies the crowding-distanace for `solutions`.
 /// Returns for each objective the min-max distance.
-pub fn crowding_distance_assignment<T, F>(solutions: &mut [T],
-                                          front_indices: &mut Vec<usize>,
-                                          common_rank: u32,
-                                          objectives: &[usize])
-                                          -> Vec<f64>
-    where T: CrowdingDistanceAssignment<F>,
-          F: MultiObjective
+pub fn crowding_distance_assignment<T, F>(
+    solutions: &mut [T],
+    front_indices: &mut Vec<usize>,
+    common_rank: u32,
+    objectives: &[usize],
+) -> Vec<f64>
+where
+    T: CrowdingDistanceAssignment<F>,
+    F: MultiObjective,
 {
     assert!(objectives.len() > 0);
 
@@ -80,7 +85,10 @@ pub fn crowding_distance_assignment<T, F>(solutions: &mut [T],
     for &m in objectives.iter() {
         // sort front_indices according to objective `m`
         front_indices.sort_by(|&a, &b| {
-            solutions[a].fitness().cmp_objective(solutions[b].fitness(), m)
+            solutions[a].fitness().cmp_objective(
+                solutions[b].fitness(),
+                m,
+            )
         });
 
         let min_idx = front_indices[0];
@@ -91,9 +99,9 @@ pub fn crowding_distance_assignment<T, F>(solutions: &mut [T],
         *solutions[max_idx].dist_mut() = INFINITY;
 
         let dist_max_min = solutions[max_idx]
-                               .fitness()
-                               .dist_objective(solutions[min_idx].fitness(), m)
-                               .abs();
+            .fitness()
+            .dist_objective(solutions[min_idx].fitness(), m)
+            .abs();
         min_max_distances.push(dist_max_min);
         debug_assert!(dist_max_min >= 0.0);
         if dist_max_min != 0.0 {
@@ -105,9 +113,9 @@ pub fn crowding_distance_assignment<T, F>(solutions: &mut [T],
                 let next_idx = front_indices[i + 1];
 
                 let dist = solutions[next_idx]
-                               .fitness()
-                               .dist_objective(solutions[prev_idx].fitness(), m)
-                               .abs();
+                    .fitness()
+                    .dist_objective(solutions[prev_idx].fitness(), m)
+                    .abs();
                 debug_assert!(dist >= 0.0);
                 *solutions[curr_idx].dist_mut() += dist / norm;
             }

@@ -14,18 +14,21 @@ pub struct DriverConfig {
     pub parallel_weight: f64,
 }
 
-pub trait Driver: Sync
-{
+pub trait Driver: Sync {
     type GENOME: Clone + Sync + Send; // XXX: clone?
     type FIT: MultiObjective + Domination + Clone + Send; // XXX: clone?
     type SELECTION: SelectSolutions<Individual<Self::GENOME, Self::FIT>, Self::FIT>;
 
-    fn random_genome<R>(&self, rng: &mut R) -> Self::GENOME where R: Rng;
-    fn initial_population<R>(&self,
-                             rng: &mut R,
-                             n: usize)
-                             -> UnratedPopulation<Self::GENOME, Self::FIT>
-        where R: Rng
+    fn random_genome<R>(&self, rng: &mut R) -> Self::GENOME
+    where
+        R: Rng;
+    fn initial_population<R>(
+        &self,
+        rng: &mut R,
+        n: usize,
+    ) -> UnratedPopulation<Self::GENOME, Self::FIT>
+    where
+        R: Rng,
     {
         let mut pop = UnratedPopulation::new();
         for _ in 0..n {
@@ -38,7 +41,8 @@ pub trait Driver: Sync
 
     // XXX: Make use of Fitness!
     fn mate<R>(&self, rng: &mut R, parent1: &Self::GENOME, parent2: &Self::GENOME) -> Self::GENOME
-        where R: Rng;
+    where
+        R: Rng;
 
     fn is_solution(&self, _ind: &Self::GENOME, _fit: &Self::FIT) -> bool {
         false
@@ -51,32 +55,35 @@ pub trait Driver: Sync
         RankedPopulation::<Self::GENOME, Self::FIT>::new()
     }
 
-    fn reproduce<R>(&self,
-                    parents: &RankedPopulation<Self::GENOME, Self::FIT>,
-                    rng: &mut R,
-                    config: &DriverConfig)
-                    -> UnratedPopulation<Self::GENOME, Self::FIT>
-        where R: Rng
+    fn reproduce<R>(
+        &self,
+        parents: &RankedPopulation<Self::GENOME, Self::FIT>,
+        rng: &mut R,
+        config: &DriverConfig,
+    ) -> UnratedPopulation<Self::GENOME, Self::FIT>
+    where
+        R: Rng,
     {
-        parents.reproduce(rng,
-                          config.lambda,
-                          config.k,
-                          &|rng, p1, p2| self.mate(rng, p1, p2))
+        parents.reproduce(rng, config.lambda, config.k, &|rng, p1, p2| {
+            self.mate(rng, p1, p2)
+        })
     }
 
     /// merge the parent population with the offspring population and select `config.mu`
     /// individuals according to `selection`.
-    fn merge_and_select<R>(&self,
-                           parents: RankedPopulation<Self::GENOME, Self::FIT>,
-                           offspring: UnratedPopulation<Self::GENOME, Self::FIT>,
-                           rng: &mut R,
-                           config: &DriverConfig,
-                           selection: &Self::SELECTION)
-                           -> RankedPopulation<Self::GENOME, Self::FIT>
-        where R: Rng
+    fn merge_and_select<R>(
+        &self,
+        parents: RankedPopulation<Self::GENOME, Self::FIT>,
+        offspring: UnratedPopulation<Self::GENOME, Self::FIT>,
+        rng: &mut R,
+        config: &DriverConfig,
+        selection: &Self::SELECTION,
+    ) -> RankedPopulation<Self::GENOME, Self::FIT>
+    where
+        R: Rng,
     {
-        let rated_offspring = offspring.rate_in_parallel(&|ind| self.fitness(ind),
-                                                         config.parallel_weight);
+        let rated_offspring =
+            offspring.rate_in_parallel(&|ind| self.fitness(ind), config.parallel_weight);
         let mut next_generation = parents.merge(rated_offspring);
 
         // apply a population metric on the whole population
@@ -85,18 +92,19 @@ pub trait Driver: Sync
         next_generation.select(config.mu, &config.objectives, selection, rng)
     }
 
-    fn run<R, L>(&self,
-                 rng: &mut R,
-                 config: &DriverConfig,
-                 selection: &Self::SELECTION,
-                 logger: &L)
-                 -> RankedPopulation<Self::GENOME, Self::FIT>
-        where R: Rng,
-              L: Fn(usize,
-                    u64,
-                    usize,
-                    &RankedPopulation<Self::GENOME, Self::FIT>)
-                   
+    fn run<R, L>(
+        &self,
+        rng: &mut R,
+        config: &DriverConfig,
+        selection: &Self::SELECTION,
+        logger: &L,
+    ) -> RankedPopulation<Self::GENOME, Self::FIT>
+    where
+        R: Rng,
+        L: Fn(usize,
+           u64,
+           usize,
+           &RankedPopulation<Self::GENOME, Self::FIT>),
     {
         // this is generation 0. it's empty
         let mut time_last = time::precise_time_ns();
@@ -109,10 +117,8 @@ pub trait Driver: Sync
             parents = self.merge_and_select(parents, offspring, rng, config, selection);
 
             let mut found_solutions = 0;
-            parents.all(&mut |ind, fit| {
-                if self.is_solution(ind, fit) {
-                    found_solutions += 1;
-                }
+            parents.all(&mut |ind, fit| if self.is_solution(ind, fit) {
+                found_solutions += 1;
             });
 
             let now = time::precise_time_ns();
