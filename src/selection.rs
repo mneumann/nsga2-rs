@@ -360,13 +360,13 @@ where
         // fronts, continue with the first and so on, until enough individuals are selected.
         // XXX
 
-        let mut round = 0;
+        //let mut round = 0;
         'outer: while missing > 0 {
-            for (front_i, current_front) in fronts_grouped.iter_mut().enumerate() {
+            for (_front_i, current_front) in fronts_grouped.iter_mut().enumerate() {
                 // select up to `missing` solutions from current_front, but from each group only one
                 // (which is choosen randomly).
                 for objective_grp in current_front.iter_mut() {
-                    'next_group: for (grp_i, grp) in objective_grp.iter_mut().enumerate() {
+                    'next_group: for (_grp_i, grp) in objective_grp.iter_mut().enumerate() {
                         if missing > 0 {
                             loop {
                                 if grp.is_empty() {
@@ -396,7 +396,7 @@ where
                 // only retain groups which are non-empty
                 current_front.retain(|grp| grp.len() > 0);
             }
-            round += 1;
+            //round += 1;
         }
     }
 }
