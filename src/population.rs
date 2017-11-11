@@ -2,7 +2,7 @@ use domination::Domination;
 use multi_objective::MultiObjective;
 use crowding_distance::CrowdingDistanceAssignment; // XXX: Change name
 use selection::SelectSolutions;
-use rayon::par_iter::*;
+use rayon::prelude::*;
 use selection::tournament_selection_fast;
 use rand::Rng;
 use std::u32;
@@ -166,13 +166,14 @@ where
 
     /// Rate the individuals in parallel.
 
-    pub fn rate_in_parallel<E>(self, eval: &E, weight: f64) -> RatedPopulation<G, F>
+    pub fn rate_in_parallel<E>(self, eval: &E) -> RatedPopulation<G, F>
     where
         E: Fn(&G) -> F + Sync,
     {
         let UnratedPopulation { mut individuals } = self;
 
-        individuals.par_iter_mut().weight(weight).for_each(|ind| {
+        // TODO: Use with_min_len(x).with_max_len(y)
+        individuals.par_iter_mut().for_each(|ind| {
             assert!(ind.fitness.is_none());
             let fitness = eval(&ind.genome);
             ind.fitness = Some(fitness);

@@ -11,7 +11,6 @@ pub struct DriverConfig {
     pub k: usize,
     pub ngen: usize,
     pub objectives: Vec<usize>,
-    pub parallel_weight: f64,
 }
 
 pub trait Driver: Sync {
@@ -82,8 +81,7 @@ pub trait Driver: Sync {
     where
         R: Rng,
     {
-        let rated_offspring =
-            offspring.rate_in_parallel(&|ind| self.fitness(ind), config.parallel_weight);
+        let rated_offspring = offspring.rate_in_parallel(&|ind| self.fitness(ind));
         let mut next_generation = parents.merge(rated_offspring);
 
         // apply a population metric on the whole population

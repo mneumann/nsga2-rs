@@ -200,7 +200,6 @@ fn main() {
         k: 2, // tournament
         ngen: 2, // max number of generations
         objectives: vec![0, 1], // objectives to use
-        parallel_weight: 1.0, // rayon's weight
     };
 
     let final_population = driver.run(&mut rng, &driver_config, &SelectNSGA, &|_, _, _, _| {});
