@@ -1,7 +1,7 @@
 use rand::Rng;
 use domination::Domination;
 use multi_objective::MultiObjective;
-use population::{Individual, UnratedPopulation, RatedPopulation, RankedPopulation};
+use population::{Individual, RankedPopulation, RatedPopulation, UnratedPopulation};
 use selection::SelectSolutions;
 use time;
 
@@ -99,10 +99,7 @@ pub trait Driver: Sync {
     ) -> RankedPopulation<Self::GENOME, Self::FIT>
     where
         R: Rng,
-        L: Fn(usize,
-           u64,
-           usize,
-           &RankedPopulation<Self::GENOME, Self::FIT>),
+        L: Fn(usize, u64, usize, &RankedPopulation<Self::GENOME, Self::FIT>),
     {
         // this is generation 0. it's empty
         let mut time_last = time::precise_time_ns();
@@ -115,8 +112,10 @@ pub trait Driver: Sync {
             parents = self.merge_and_select(parents, offspring, rng, config, selection);
 
             let mut found_solutions = 0;
-            parents.all(&mut |ind, fit| if self.is_solution(ind, fit) {
-                found_solutions += 1;
+            parents.all(&mut |ind, fit| {
+                if self.is_solution(ind, fit) {
+                    found_solutions += 1;
+                }
             });
 
             let now = time::precise_time_ns();

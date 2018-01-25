@@ -51,7 +51,9 @@ where
 {
     #[inline]
     fn from(t: (T, T)) -> MultiObjective2<T> {
-        MultiObjective2 { objectives: [t.0, t.1] }
+        MultiObjective2 {
+            objectives: [t.0, t.1],
+        }
     }
 }
 

@@ -12,7 +12,6 @@ where
     fn rank(&self) -> u32;
     fn dist(&self) -> f64;
 
-
     fn set_rank(&mut self, rank: u32) {
         *self.rank_mut() = rank;
     }
@@ -32,8 +31,8 @@ where
 
     #[inline]
     fn has_better_rank_and_crowding(&self, other: &Self) -> bool {
-        (self.rank() < other.rank()) ||
-            ((self.rank() == other.rank()) && self.dist() > other.dist())
+        (self.rank() < other.rank())
+            || ((self.rank() == other.rank()) && self.dist() > other.dist())
     }
 
     #[inline]
@@ -85,10 +84,9 @@ where
     for &m in objectives.iter() {
         // sort front_indices according to objective `m`
         front_indices.sort_by(|&a, &b| {
-            solutions[a].fitness().cmp_objective(
-                solutions[b].fitness(),
-                m,
-            )
+            solutions[a]
+                .fitness()
+                .cmp_objective(solutions[b].fitness(), m)
         });
 
         let min_idx = front_indices[0];

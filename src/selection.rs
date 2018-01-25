@@ -22,7 +22,6 @@ where
         R: Rng;
 }
 
-
 /// Uses the approach NSGA takes.
 pub struct SelectNSGA;
 
@@ -133,7 +132,6 @@ where
 
         let mut fronts_grouped: Vec<Vec<Vec<_>>> = Vec::new();
         for (rank, mut front) in pareto_fronts.enumerate() {
-
             // first assign rank and crowding distance of those solutions in `front`.
             let min_max_distances =
                 crowding_distance_assignment(solutions, &mut front, rank as u32, objectives);
@@ -156,8 +154,7 @@ where
                         &objectives,
                         &min_max_distances,
                         self.objective_eps,
-                    )
-                    {
+                    ) {
                         grp.push(idx);
                         continue 'group;
                     }
@@ -173,10 +170,9 @@ where
             for grp in groups.iter_mut() {
                 // use same average crowding distance for each point in the group
                 assert!(grp.len() > 0);
-                let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).fold(
-                    0.0,
-                    |acc, x| acc + x,
-                ) / grp.len() as f64;
+                let avg: f64 = grp.iter()
+                    .map(|&idx| solutions[idx].dist())
+                    .fold(0.0, |acc, x| acc + x) / grp.len() as f64;
                 for &idx in grp.iter() {
                     solutions[idx].set_dist(avg);
                     solutions[idx].set_crowd(grp.len());
@@ -184,10 +180,9 @@ where
 
                 // sort grp according to primary fitness
                 grp.sort_by(|&a, &b| {
-                    solutions[a].fitness().cmp_objective(
-                        solutions[b].fitness(),
-                        objectives[0],
-                    )
+                    solutions[a]
+                        .fitness()
+                        .cmp_objective(solutions[b].fitness(), objectives[0])
                 });
             }
 
@@ -195,10 +190,9 @@ where
             // the best individual of fitness objective #0. this makes
             // sure that we always ever include the elite
             groups.sort_by(|a, b| {
-                solutions[a[0]].fitness().cmp_objective(
-                    solutions[b[0]].fitness(),
-                    objectives[0],
-                )
+                solutions[a[0]]
+                    .fitness()
+                    .cmp_objective(solutions[b[0]].fitness(), objectives[0])
             });
 
             fronts_grouped.push(groups);
@@ -241,7 +235,6 @@ where
         }
     }
 }
-
 
 /// Selection using a modified version of NSGP [1].
 pub struct SelectNSGPMod {
@@ -303,8 +296,7 @@ where
                             &[obj],
                             &[min_max],
                             self.objective_eps,
-                        )
-                        {
+                        ) {
                             grp.push(idx);
                             continue 'group;
                         }
@@ -320,10 +312,10 @@ where
                 for grp in groups.iter_mut() {
                     // use same average crowding distance for each point in the group
                     assert!(grp.len() > 0);
-                    let avg: f64 = grp.iter().map(|&idx| solutions[idx].dist()).fold(
-                        0.0,
-                        |acc, x| acc + x,
-                    ) / grp.len() as f64;
+                    let avg: f64 = grp.iter()
+                        .map(|&idx| solutions[idx].dist())
+                        .fold(0.0, |acc, x| acc + x)
+                        / grp.len() as f64;
                     for &idx in grp.iter() {
                         solutions[idx].set_dist(avg);
                         solutions[idx].set_crowd(grp.len()); // XXX
@@ -331,10 +323,9 @@ where
 
                     // sort grp according to objective
                     grp.sort_by(|&a, &b| {
-                        solutions[a].fitness().cmp_objective(
-                            solutions[b].fitness(),
-                            obj,
-                        )
+                        solutions[a]
+                            .fitness()
+                            .cmp_objective(solutions[b].fitness(), obj)
                     });
                 }
 
@@ -342,10 +333,9 @@ where
                 // the best individual of fitness objective #0. this makes
                 // sure that we always ever include the elite
                 groups.sort_by(|a, b| {
-                    solutions[a[0]].fitness().cmp_objective(
-                        solutions[b[0]].fitness(),
-                        obj,
-                    )
+                    solutions[a[0]]
+                        .fitness()
+                        .cmp_objective(solutions[b[0]].fitness(), obj)
                 });
 
                 objective_groups.push(groups);
@@ -400,8 +390,6 @@ where
         }
     }
 }
-
-
 
 /// Select the best individual out of `k` randomly choosen.
 /// This gives individuals with better fitness a higher chance to reproduce.

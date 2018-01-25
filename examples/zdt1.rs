@@ -1,9 +1,8 @@
-/// Optimizes the zdt1 function using NSGA-II
-
-extern crate rand;
 extern crate nsga2;
+/// Optimizes the zdt1 function using NSGA-II
+extern crate rand;
 
-use rand::{Rng, Closed01};
+use rand::{Closed01, Rng};
 use nsga2::driver::{Driver, DriverConfig};
 use nsga2::multi_objective::MultiObjective2;
 use nsga2::selection::SelectNSGA;
@@ -190,15 +189,15 @@ fn main() {
     let mut rng = rand::thread_rng();
 
     let driver = ZdtDriver {
-        zdt_order: 2, // ZDT1 order
+        zdt_order: 2,    // ZDT1 order
         mating_eta: 2.0, // cross-over variance
     };
 
     let driver_config = DriverConfig {
-        mu: 100, // size of population
-        lambda: 100, // size of offspring population
-        k: 2, // tournament
-        ngen: 2, // max number of generations
+        mu: 100,                // size of population
+        lambda: 100,            // size of offspring population
+        k: 2,                   // tournament
+        ngen: 2,                // max number of generations
         objectives: vec![0, 1], // objectives to use
     };
 
