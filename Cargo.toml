@@ -11,6 +11,6 @@ include = ["src/*.rs", "examples/*.rs", "Cargo.toml", "LICENSE", "README.md"]
 
 [dependencies]
 
-rand = "0.3"
+rand = "0.4"
 rayon = "0.9"
 time = "0.1"
