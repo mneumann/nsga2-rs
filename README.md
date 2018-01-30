@@ -1,2 +1,3 @@
-# nsga2-rs
-Implementation of NSGA-2 (Non-dominated Sorting 2)
+# NSGA2 - Non Dominated Sorting Genetic Algorithm II
+
+Implementation of NSGA2 in Rust.
