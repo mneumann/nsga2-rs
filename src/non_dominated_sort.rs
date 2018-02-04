@@ -126,11 +126,9 @@ where
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{non_dominated_sort, NonDominatedSorter};
-    use test_helper_domination::{Tuple, TupleDominationOrd};
-
-    fn get_solutions() -> Vec<Tuple> {
+mod helper {
+    use test_helper_domination::Tuple;
+    pub fn get_solutions() -> Vec<Tuple> {
         vec![
             Tuple(1, 2),
             Tuple(1, 2),
@@ -139,26 +137,28 @@ mod tests {
             Tuple(0, 2),
         ]
     }
+}
 
-    #[test]
-    fn test_non_dominated_sort() {
-        let solutions = get_solutions();
-        let fronts = non_dominated_sort(&solutions, &TupleDominationOrd, solutions.len());
+#[test]
+fn test_non_dominated_sort() {
+    use test_helper_domination::TupleDominationOrd;
+    let solutions = helper::get_solutions();
+    let fronts = non_dominated_sort(&solutions, &TupleDominationOrd, solutions.len());
 
-        assert_eq!(3, fronts.len());
-        assert_eq!(&vec![2, 4], &fronts[0]);
-        assert_eq!(&vec![0, 1], &fronts[1]);
-        assert_eq!(&vec![3], &fronts[2]);
-    }
+    assert_eq!(3, fronts.len());
+    assert_eq!(&vec![2, 4], &fronts[0]);
+    assert_eq!(&vec![0, 1], &fronts[1]);
+    assert_eq!(&vec![3], &fronts[2]);
+}
 
-    #[test]
-    fn test_non_dominated_sort_iter() {
-        let solutions = get_solutions();
-        let mut fronts = NonDominatedSorter::new(&solutions, &TupleDominationOrd);
+#[test]
+fn test_non_dominated_sort_iter() {
+    use test_helper_domination::TupleDominationOrd;
+    let solutions = helper::get_solutions();
+    let mut fronts = NonDominatedSorter::new(&solutions, &TupleDominationOrd);
 
-        assert_eq!(Some(vec![2, 4]), fronts.next());
-        assert_eq!(Some(vec![0, 1]), fronts.next());
-        assert_eq!(Some(vec![3]), fronts.next());
-        assert_eq!(None, fronts.next());
-    }
+    assert_eq!(Some(vec![2, 4]), fronts.next());
+    assert_eq!(Some(vec![0, 1]), fronts.next());
+    assert_eq!(Some(vec![3]), fronts.next());
+    assert_eq!(None, fronts.next());
 }
