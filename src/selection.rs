@@ -29,18 +29,10 @@ where
     for front in NonDominatedSort::new(solutions, multi_objective) {
         let (mut assigned_crowding, _) = assign_crowding_distance(&front, multi_objective);
 
-        if assigned_crowding.len() <= missing_solutions {
-            // the whole front fits into the result
-            missing_solutions -= assigned_crowding.len();
-            result.extend(assigned_crowding);
-
-            if missing_solutions == 0 {
-                break;
-            }
-        } else {
+        if assigned_crowding.len() > missing_solutions {
             // the front does not fit in total. sort it's solutions
             // according to the crowding distance and take the best
-            // until we have "n" solutions in the result.
+            // solutions until we have "n" solutions in the result.
 
             assigned_crowding.sort_by(|a, b| {
                 debug_assert_eq!(a.rank, b.rank);
@@ -49,9 +41,15 @@ where
                     .unwrap()
                     .reverse()
             });
+        }
 
-            result.extend(assigned_crowding.into_iter().take(missing_solutions));
+        // Take no more than `missing_solutions`
+        let take = assigned_crowding.len().min(missing_solutions);
 
+        result.extend(assigned_crowding.into_iter().take(take));
+
+        missing_solutions -= take;
+        if missing_solutions == 0 {
             break;
         }
     }
