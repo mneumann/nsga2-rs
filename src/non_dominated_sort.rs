@@ -8,6 +8,23 @@ pub struct NonDominatedSorter {
     current_front: Vec<usize>,
 }
 
+struct Entry<'a, S, I>
+where
+    S: 'a,
+{
+    /// A reference to the solution
+    solution: &'a S,
+
+    /// The index that `solution` has within the `solutions` array.
+    index: I,
+
+    /// By how many other solutions is this solution dominated
+    domination_count: I,
+
+    /// Which solutions do we dominate
+    dominated_solutions: Vec<I>,
+}
+
 impl NonDominatedSorter {
     /// Perform a non-dominated sort of `solutions`.
     ///
@@ -18,53 +35,53 @@ impl NonDominatedSorter {
         D: DominationOrd<Solution = S>,
     {
         let mut current_front = Vec::new();
-        let mut domination_count: Vec<usize> = solutions.iter().map(|_| 0).collect();
 
-        // XXX: create an array with Item { t: &T, dominated_solutions: Vec<usize>,
-        // domination_count: usize }
+        let mut arr: Vec<Entry<S, usize>> = solutions
+            .iter()
+            .enumerate()
+            .map(|(index, solution)| Entry {
+                solution,
+                index,
+                domination_count: 0,
+                dominated_solutions: Vec::new(),
+            })
+            .collect();
 
-        let mut dominated_solutions: Vec<Vec<usize>> =
-            solutions.iter().map(|_| Vec::new()).collect();
-
-        // XXX: Use mut_split on the array, to obtain two mutable slices.
-        for i in 0..solutions.len() {
-            for j in i + 1..solutions.len() {
-                let p = &solutions[i];
-                let q = &solutions[j];
-
-                /// XXX: We do not want to wrap our solutions within a DominationOrd
-                /// struct. So it's easier to pass in the relevant DominationOrd struct
-                /// and call it's domination_ord function passing the solution in.
-                match domination.domination_ord(p, q) {
+        for mid in 1..arr.len() + 1 {
+            let (front_slice, tail_slice) = arr.split_at_mut(mid);
+            debug_assert!(front_slice.len() > 0);
+            let p = front_slice.last_mut().unwrap();
+            for q in tail_slice.iter_mut() {
+                match domination.domination_ord(p.solution, q.solution) {
                     Ordering::Less => {
                         // p dominates q
                         // Add `q` to the set of solutions dominated by `p`.
-                        dominated_solutions[i].push(j);
+                        p.dominated_solutions.push(q.index);
                         // q is dominated by p
-                        domination_count[j] += 1;
+                        q.domination_count += 1;
                     }
                     Ordering::Greater => {
                         // p is dominated by q
                         // Add `p` to the set of solutions dominated by `q`.
-                        dominated_solutions[j].push(i);
+                        q.dominated_solutions.push(p.index);
                         // q dominates p
                         // Increment domination counter of `p`.
-                        domination_count[i] += 1;
+                        p.domination_count += 1;
                     }
                     Ordering::Equal => {}
                 }
             }
-
-            if domination_count[i] == 0 {
+            if p.domination_count == 0 {
                 // `p` belongs to the first front as it is not dominated by any
                 // other solution.
-                current_front.push(i);
+                current_front.push(p.index);
             }
         }
 
+        // XXX: this is inefficient
         NonDominatedSorter {
-            domination_count: domination_count,
-            dominated_solutions: dominated_solutions,
+            domination_count: arr.iter().map(|e| e.domination_count).collect(),
+            dominated_solutions: arr.iter().map(|e| e.dominated_solutions.clone()).collect(),
             current_front: current_front,
         }
     }
