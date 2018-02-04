@@ -1,35 +1,41 @@
-use domination::Domination;
+use domination::DominationOrd;
 use std::cmp::Ordering;
 use std::mem;
 
-pub struct FastNonDominatedSorter {
+pub struct NonDominatedSorter {
     domination_count: Vec<usize>,
     dominated_solutions: Vec<Vec<usize>>,
     current_front: Vec<usize>,
 }
 
-impl FastNonDominatedSorter {
-    /// Perform a non dominated sort of `solutions`.
+impl NonDominatedSorter {
+    /// Perform a non-dominated sort of `solutions`.
     ///
     /// Each pareto front (the indices of the `solutions`) can be obtained by calling `next()`.
 
-    pub fn new<T, FIT, MAP>(solutions: &[T], map: &MAP, objectives: &[usize]) -> Self
+    pub fn new<S, D>(solutions: &[S], domination: &D) -> Self
     where
-        MAP: Fn(&T) -> &FIT,
-        FIT: Domination,
+        D: DominationOrd<Solution = S>,
     {
         let mut current_front = Vec::new();
         let mut domination_count: Vec<usize> = solutions.iter().map(|_| 0).collect();
 
+        // XXX: create an array with Item { t: &T, dominated_solutions: Vec<usize>,
+        // domination_count: usize }
+
         let mut dominated_solutions: Vec<Vec<usize>> =
             solutions.iter().map(|_| Vec::new()).collect();
 
+        // XXX: Use mut_split on the array, to obtain two mutable slices.
         for i in 0..solutions.len() {
             for j in i + 1..solutions.len() {
                 let p = &solutions[i];
                 let q = &solutions[j];
 
-                match map(p).domination_ord(map(q), objectives) {
+                /// XXX: We do not want to wrap our solutions within a DominationOrd
+                /// struct. So it's easier to pass in the relevant DominationOrd struct
+                /// and call it's domination_ord function passing the solution in.
+                match domination.domination_ord(p, q) {
                     Ordering::Less => {
                         // p dominates q
                         // Add `q` to the set of solutions dominated by `p`.
@@ -56,7 +62,7 @@ impl FastNonDominatedSorter {
             }
         }
 
-        FastNonDominatedSorter {
+        NonDominatedSorter {
             domination_count: domination_count,
             dominated_solutions: dominated_solutions,
             current_front: current_front,
@@ -65,8 +71,7 @@ impl FastNonDominatedSorter {
 }
 
 /// Iterates over each pareto front.
-
-impl Iterator for FastNonDominatedSorter {
+impl Iterator for NonDominatedSorter {
     type Item = Vec<usize>;
 
     /// Returns the next front
@@ -98,24 +103,62 @@ impl Iterator for FastNonDominatedSorter {
     }
 }
 
-pub fn fast_non_dominated_sort<T>(
-    solutions: &[T],
-    n: usize,
-    objectives: &[usize],
+pub fn non_dominated_sort<S, D>(
+    solutions: &[S],
+    domination: &D,
+    cap_fronts_at: usize,
 ) -> Vec<Vec<usize>>
 where
-    T: Domination,
+    D: DominationOrd<Solution = S>,
 {
-    let sorter = FastNonDominatedSorter::new(solutions, &|f| f, objectives);
+    let sorter = NonDominatedSorter::new(solutions, domination);
     let mut found_solutions: usize = 0;
     let mut fronts = Vec::new();
 
     for front in sorter {
         found_solutions += front.len();
         fronts.push(front);
-        if found_solutions >= n {
+        if found_solutions >= cap_fronts_at {
             break;
         }
     }
     return fronts;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{non_dominated_sort, NonDominatedSorter};
+    use test_helper_domination::{Tuple, TupleDominationOrd};
+
+    fn get_solutions() -> Vec<Tuple> {
+        vec![
+            Tuple(1, 2),
+            Tuple(1, 2),
+            Tuple(2, 1),
+            Tuple(1, 3),
+            Tuple(0, 2),
+        ]
+    }
+
+    #[test]
+    fn test_non_dominated_sort() {
+        let solutions = get_solutions();
+        let fronts = non_dominated_sort(&solutions, &TupleDominationOrd, solutions.len());
+
+        assert_eq!(3, fronts.len());
+        assert_eq!(&vec![2, 4], &fronts[0]);
+        assert_eq!(&vec![0, 1], &fronts[1]);
+        assert_eq!(&vec![3], &fronts[2]);
+    }
+
+    #[test]
+    fn test_non_dominated_sort_iter() {
+        let solutions = get_solutions();
+        let mut fronts = NonDominatedSorter::new(&solutions, &TupleDominationOrd);
+
+        assert_eq!(Some(vec![2, 4]), fronts.next());
+        assert_eq!(Some(vec![0, 1]), fronts.next());
+        assert_eq!(Some(vec![3]), fronts.next());
+        assert_eq!(None, fronts.next());
+    }
 }

@@ -34,31 +34,7 @@ pub trait DominationOrd {
 mod tests {
     use super::DominationOrd;
     use std::cmp::Ordering;
-
-    // Our multi-variate fitness/solution value
-    struct Tuple(usize, usize);
-
-    // We can have multiple dominance relations defined on a single
-    // type, without having to wrap the "Tuple" itself.
-    struct TupleDominationOrd;
-
-    impl DominationOrd for TupleDominationOrd {
-        type Solution = Tuple;
-
-        fn domination_ord(&self, a: &Self::Solution, b: &Self::Solution) -> Ordering {
-            if a.0 < b.0 && a.1 <= b.1 {
-                Ordering::Less
-            } else if a.0 <= b.0 && a.1 < b.1 {
-                Ordering::Less
-            } else if a.0 > b.0 && a.1 >= b.1 {
-                Ordering::Greater
-            } else if a.0 >= b.0 && a.1 > b.1 {
-                Ordering::Greater
-            } else {
-                Ordering::Equal
-            }
-        }
-    }
+    use test_helper_domination::{Tuple, TupleDominationOrd};
 
     #[test]
     fn test_non_domination() {
