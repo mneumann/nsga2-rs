@@ -87,8 +87,31 @@ impl<'a, S> NonDominatedSorter<'a, S> {
         }
     }
 
-    // Returns an iterator that yields all pareto fronts
-    // pub fn pareto_front_iter()
+    /// Returns an array containing all pareto fronts.
+    pub fn pareto_fronts(self) -> Vec<Vec<(usize, &'a S)>> {
+        let mut fronts = Vec::new();
+        for front in self {
+            fronts.push(front);
+        }
+        return fronts;
+    }
+
+    /// Returns an array containing the first pareto fronts, until
+    /// `max_solutions` have been found. Note that always the whole fronts are
+    /// returned, i.e. the number of solutions returned may be higher.
+    pub fn pareto_fronts_stop_at(self, max_solutions: usize) -> Vec<Vec<(usize, &'a S)>> {
+        let mut found_solutions = 0;
+        let mut fronts = Vec::new();
+
+        for front in self {
+            found_solutions += front.len();
+            fronts.push(front);
+            if found_solutions >= max_solutions {
+                break;
+            }
+        }
+        return fronts;
+    }
 }
 
 /// Iterate over the pareto fronts. Each call to next() will yield the
@@ -136,28 +159,6 @@ impl<'a, S> Iterator for NonDominatedSorter<'a, S> {
     }
 }
 
-pub fn non_dominated_sort<'a, S, D>(
-    solutions: &'a [S],
-    domination: &D,
-    cap_fronts_at: usize,
-) -> Vec<Vec<(usize, &'a S)>>
-where
-    D: DominationOrd<Solution = S>,
-{
-    let sorter = NonDominatedSorter::new(solutions, domination);
-    let mut found_solutions: usize = 0;
-    let mut fronts = Vec::new();
-
-    for front in sorter {
-        found_solutions += front.len();
-        fronts.push(front);
-        if found_solutions >= cap_fronts_at {
-            break;
-        }
-    }
-    return fronts;
-}
-
 #[cfg(test)]
 mod helper {
     use test_helper_domination::Tuple;
@@ -183,12 +184,32 @@ mod helper {
 fn test_non_dominated_sort() {
     use test_helper_domination::TupleDominationOrd;
     let solutions = helper::get_solutions();
-    let fronts = non_dominated_sort(&solutions, &TupleDominationOrd, solutions.len());
+    let fronts = NonDominatedSorter::new(&solutions, &TupleDominationOrd).pareto_fronts();
 
     assert_eq!(3, fronts.len());
     helper::assert_front_eq(&[2, 4], &fronts[0]);
     helper::assert_front_eq(&[0, 1], &fronts[1]);
     helper::assert_front_eq(&[3], &fronts[2]);
+}
+
+#[test]
+fn test_non_dominated_sort_stop_at() {
+    use test_helper_domination::TupleDominationOrd;
+    let solutions = helper::get_solutions();
+
+    {
+        let fronts =
+            NonDominatedSorter::new(&solutions, &TupleDominationOrd).pareto_fronts_stop_at(2);
+        assert_eq!(1, fronts.len());
+        helper::assert_front_eq(&[2, 4], &fronts[0]);
+    }
+    {
+        let fronts =
+            NonDominatedSorter::new(&solutions, &TupleDominationOrd).pareto_fronts_stop_at(3);
+        assert_eq!(2, fronts.len());
+        helper::assert_front_eq(&[2, 4], &fronts[0]);
+        helper::assert_front_eq(&[0, 1], &fronts[1]);
+    }
 }
 
 #[test]
