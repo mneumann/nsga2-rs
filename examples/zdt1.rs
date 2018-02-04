@@ -6,7 +6,8 @@ use rand::{Closed01, Rng};
 use nsga2::objective::Objective;
 use nsga2::multi_objective::MultiObjective;
 use nsga2::tournament_selection::tournament_selection_fast;
-use nsga2::selection::selection_nsga;
+use nsga2::selection::SelectAndRank;
+use nsga2::select_nsga::SelectNSGA;
 use std::cmp::{Ordering, PartialOrd};
 
 /// optimal pareto front (f_1, 1 - sqrt(f_1))
@@ -237,7 +238,7 @@ fn generational_step<R: Rng>(
     let rated_population: Vec<_> = population.iter().map(|i| driver.fitness(i)).collect();
 
     // assign rank and crowding distance, and reduce to `mu` individuals
-    let ranked_population = selection_nsga(&rated_population[..], evo_config.mu, &mo);
+    let ranked_population = SelectNSGA.select_and_rank(&rated_population[..], evo_config.mu, &mo);
 
     // ------------------------------------------------------
     // generate offspring (reproduce)
@@ -320,7 +321,7 @@ fn main() {
     let rated_population: Vec<_> = population.iter().map(|i| driver.fitness(i)).collect();
 
     // assign rank and crowding distance, and reduce to `mu` individuals
-    let ranked_population = selection_nsga(&rated_population[..], evo_config.mu, &mo);
+    let ranked_population = SelectNSGA.select_and_rank(&rated_population[..], evo_config.mu, &mo);
 
     let max_rank = ranked_population
         .iter()
