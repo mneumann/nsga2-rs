@@ -1,12 +1,14 @@
-use objective::Objective;
+use std::cmp::Ordering;
 use std::marker::PhantomData;
+use objective::Objective;
+use non_dominated_sort::DominationOrd;
 
 pub struct MultiObjective<'a, S, D>
 where
     S: 'a,
     D: 'a,
 {
-    objectives: &'a [&'a Objective<Solution = S, Distance = D>],
+    pub objectives: &'a [&'a Objective<Solution = S, Distance = D>],
     _solution: PhantomData<S>,
     _distance: PhantomData<D>,
 }
@@ -25,10 +27,71 @@ where
     }
 }
 
+impl<'a, S, D> DominationOrd for MultiObjective<'a, S, D>
+where
+    S: 'a,
+    D: 'a,
+{
+    type Solution = S;
+
+    fn domination_ord(&self, a: &Self::Solution, b: &Self::Solution) -> Ordering {
+        let mut less_cnt = 0;
+        let mut greater_cnt = 0;
+        let mut equal_cnt = 0;
+
+        for objective in self.objectives.iter() {
+            match objective.total_order(a, b) {
+                Ordering::Less => {
+                    less_cnt += 1;
+                }
+                Ordering::Greater => {
+                    greater_cnt += 1;
+                }
+                Ordering::Equal => {
+                    equal_cnt += 1;
+                }
+            }
+        }
+
+        let total_cnt = self.objectives.len();
+        debug_assert!(less_cnt + greater_cnt + equal_cnt == total_cnt);
+
+        if equal_cnt == total_cnt {
+            debug_assert!(less_cnt == 0);
+            debug_assert!(greater_cnt == 0);
+            Ordering::Equal
+        } else if greater_cnt == 0 {
+            debug_assert!(less_cnt + equal_cnt == total_cnt);
+            debug_assert!(less_cnt > 0);
+            Ordering::Less
+        } else if less_cnt == 0 {
+            debug_assert!(greater_cnt + equal_cnt == total_cnt);
+            debug_assert!(greater_cnt > 0);
+            Ordering::Greater
+        } else {
+            debug_assert!(greater_cnt > 0);
+            debug_assert!(less_cnt > 0);
+            debug_assert!(equal_cnt > 0);
+            Ordering::Equal
+        }
+    }
+}
+
 #[test]
 fn test_multi_objective() {
     use test_helper_objective::{Objective1, Objective2, Objective3, Tuple};
 
     // construct a multi objective over a Tuple
-    let _ = MultiObjective::<Tuple, f64>::new(&[&Objective1, &Objective2, &Objective3]);
+    let mo = MultiObjective::<Tuple, f64>::new(&[&Objective1, &Objective2, &Objective3]);
+
+    let a = Tuple(1, 2);
+    let b = Tuple(2, 1);
+    let c = Tuple(1, 3);
+
+    assert_eq!(Ordering::Equal, mo.domination_ord(&a, &a));
+    assert_eq!(Ordering::Equal, mo.domination_ord(&a, &b));
+    assert_eq!(Ordering::Equal, mo.domination_ord(&b, &b));
+
+    assert_eq!(Ordering::Less, mo.domination_ord(&a, &c));
+    assert_eq!(Ordering::Greater, mo.domination_ord(&c, &a));
 }
