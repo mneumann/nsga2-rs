@@ -1,5 +1,5 @@
 use multi_objective::MultiObjective;
-use non_dominated_sort::{NonDominatedSort, SolutionWithIndex};
+use non_dominated_sort::NonDominatedSort;
 use crowding_distance::{assign_crowding_distance, AssignedCrowdingDistance};
 use std::cmp::PartialOrd;
 
@@ -22,28 +22,25 @@ where
     // Cannot select more solutions than we actually have
     let n = solutions.len().min(n);
     debug_assert!(n <= solutions.len());
+
     let mut result = Vec::with_capacity(n);
+    let mut missing_solutions = n;
 
     for front in NonDominatedSort::new(solutions, multi_objective) {
-        if result.len() + front.solutions.len() <= n {
+        let (mut assigned_crowding, _) = assign_crowding_distance(&front, multi_objective);
+
+        if assigned_crowding.len() <= missing_solutions {
             // the whole front fits into the result
+            missing_solutions -= assigned_crowding.len();
+            result.extend(assigned_crowding);
 
-            // NOTE: I think in the original paper, the authors would
-            // not defined the crowding distance. But in order to select
-            // parents to reproduce, having the crowding distance
-            // readily available is desired.
-            let (mut assigned_crowding, _) = assign_crowding_distance(&front, multi_objective);
-
-            for s in assigned_crowding {
-                result.push(s);
-                debug_assert!(result.len() <= n);
+            if missing_solutions == 0 {
+                break;
             }
         } else {
-            // the front does not fit in total.
-            // we will sort it's solutions according to the crowding distance and take the best
-            // until we have "n" solutions in the result
-
-            let (mut assigned_crowding, _) = assign_crowding_distance(&front, multi_objective);
+            // the front does not fit in total. sort it's solutions
+            // according to the crowding distance and take the best
+            // until we have "n" solutions in the result.
 
             assigned_crowding.sort_by(|a, b| {
                 debug_assert_eq!(a.rank, b.rank);
@@ -53,18 +50,8 @@ where
                     .reverse()
             });
 
-            debug_assert!(n >= result.len());
+            result.extend(assigned_crowding.into_iter().take(missing_solutions));
 
-            for s in assigned_crowding.into_iter().take(n - result.len()) {
-                result.push(s);
-                debug_assert!(result.len() <= n);
-            }
-
-            debug_assert_eq!(n, result.len());
-            break;
-        }
-
-        if result.len() >= n {
             break;
         }
     }
