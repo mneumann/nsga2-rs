@@ -6,14 +6,14 @@ pub struct AssignedCrowdingDistance<'a, S>
 where
     S: 'a,
 {
-    index: usize,
-    solution: &'a S,
-    rank: usize,
-    crowding_distance: f64,
+    pub index: usize,
+    pub solution: &'a S,
+    pub rank: usize,
+    pub crowding_distance: f64,
 }
 
 pub struct ObjectiveStat {
-    spread: f64,
+    pub spread: f64,
 }
 
 /// Assigns a crowding distance to each solution in `front`.
