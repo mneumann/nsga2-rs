@@ -20,7 +20,7 @@ where
     dominated_solutions: VecDeque<I>,
 }
 
-pub struct NonDominatedSorter<'a, S, I = usize>
+pub struct NonDominatedSort<'a, S, I = usize>
 where
     S: 'a,
 {
@@ -28,7 +28,7 @@ where
     current_front: Vec<(I, &'a S)>,
 }
 
-impl<'a, S> NonDominatedSorter<'a, S> {
+impl<'a, S> NonDominatedSort<'a, S> {
     /// Perform a non-dominated sort of `solutions`.
     ///
     /// Each pareto front (the indices of the `solutions`) can be obtained by calling `next()`.
@@ -116,7 +116,7 @@ impl<'a, S> NonDominatedSorter<'a, S> {
 
 /// Iterate over the pareto fronts. Each call to next() will yield the
 /// next pareto front.
-impl<'a, S> Iterator for NonDominatedSorter<'a, S> {
+impl<'a, S> Iterator for NonDominatedSort<'a, S> {
     type Item = Vec<(usize, &'a S)>;
 
     /// Return the next pareto front
@@ -184,7 +184,7 @@ mod helper {
 fn test_non_dominated_sort() {
     use test_helper_domination::TupleDominationOrd;
     let solutions = helper::get_solutions();
-    let fronts = NonDominatedSorter::new(&solutions, &TupleDominationOrd).pareto_fronts();
+    let fronts = NonDominatedSort::new(&solutions, &TupleDominationOrd).pareto_fronts();
 
     assert_eq!(3, fronts.len());
     helper::assert_front_eq(&[2, 4], &fronts[0]);
@@ -199,13 +199,13 @@ fn test_non_dominated_sort_stop_at() {
 
     {
         let fronts =
-            NonDominatedSorter::new(&solutions, &TupleDominationOrd).pareto_fronts_stop_at(2);
+            NonDominatedSort::new(&solutions, &TupleDominationOrd).pareto_fronts_stop_at(2);
         assert_eq!(1, fronts.len());
         helper::assert_front_eq(&[2, 4], &fronts[0]);
     }
     {
         let fronts =
-            NonDominatedSorter::new(&solutions, &TupleDominationOrd).pareto_fronts_stop_at(3);
+            NonDominatedSort::new(&solutions, &TupleDominationOrd).pareto_fronts_stop_at(3);
         assert_eq!(2, fronts.len());
         helper::assert_front_eq(&[2, 4], &fronts[0]);
         helper::assert_front_eq(&[0, 1], &fronts[1]);
@@ -216,7 +216,7 @@ fn test_non_dominated_sort_stop_at() {
 fn test_non_dominated_sort_iter() {
     use test_helper_domination::TupleDominationOrd;
     let solutions = helper::get_solutions();
-    let mut fronts = NonDominatedSorter::new(&solutions, &TupleDominationOrd);
+    let mut fronts = NonDominatedSort::new(&solutions, &TupleDominationOrd);
     let f = &|front: Vec<_>| helper::keep_only_index(&front);
 
     assert_eq!(Some(vec![2, 4]), fronts.next().map(f));
