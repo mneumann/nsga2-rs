@@ -37,7 +37,6 @@ where
     fn domination_ord(&self, a: &Self::Solution, b: &Self::Solution) -> Ordering {
         let mut less_cnt = 0;
         let mut greater_cnt = 0;
-        let mut equal_cnt = 0;
 
         for objective in self.objectives.iter() {
             match objective.total_order(a, b) {
@@ -47,30 +46,16 @@ where
                 Ordering::Greater => {
                     greater_cnt += 1;
                 }
-                Ordering::Equal => {
-                    equal_cnt += 1;
-                }
+                Ordering::Equal => {}
             }
         }
 
-        let total_cnt = self.objectives.len();
-        debug_assert!(less_cnt + greater_cnt + equal_cnt == total_cnt);
-
-        if equal_cnt == total_cnt {
-            debug_assert!(less_cnt == 0);
-            debug_assert!(greater_cnt == 0);
-            Ordering::Equal
-        } else if greater_cnt == 0 {
-            debug_assert!(less_cnt + equal_cnt == total_cnt);
-            debug_assert!(less_cnt > 0);
+        if less_cnt > 0 && greater_cnt == 0 {
             Ordering::Less
-        } else if less_cnt == 0 {
-            debug_assert!(greater_cnt + equal_cnt == total_cnt);
-            debug_assert!(greater_cnt > 0);
+        } else if greater_cnt > 0 && less_cnt == 0 {
             Ordering::Greater
         } else {
-            debug_assert!(greater_cnt > 0);
-            debug_assert!(less_cnt > 0);
+            debug_assert!((less_cnt > 0 && greater_cnt > 0) || (less_cnt == 0 && greater_cnt == 0));
             Ordering::Equal
         }
     }
