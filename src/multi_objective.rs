@@ -71,7 +71,6 @@ where
         } else {
             debug_assert!(greater_cnt > 0);
             debug_assert!(less_cnt > 0);
-            debug_assert!(equal_cnt > 0);
             Ordering::Equal
         }
     }

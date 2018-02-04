@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use objective::Objective;
 
 // Our multi-variate fitness/solution value
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Tuple(pub usize, pub usize);
 
 // We define three objectives
