@@ -1,4 +1,4 @@
-// Here we define code commonly used by domination.rs and sort.rs.
+// Here we define code commonly used by modules `domination` and `non_dominated_sort`.
 
 use domination::DominationOrd;
 use std::cmp::Ordering;
