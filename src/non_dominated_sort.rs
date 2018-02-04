@@ -1,14 +1,9 @@
 use domination::DominationOrd;
 use std::cmp::Ordering;
 use std::mem;
+use std::collections::VecDeque;
 
-pub struct NonDominatedSorter {
-    domination_count: Vec<usize>,
-    dominated_solutions: Vec<Vec<usize>>,
-    current_front: Vec<usize>,
-}
-
-struct Entry<'a, S, I>
+struct Entry<'a, S, I = usize>
 where
     S: 'a,
 {
@@ -21,34 +16,42 @@ where
     /// By how many other solutions is this solution dominated
     domination_count: I,
 
-    /// Which solutions do we dominate
-    dominated_solutions: Vec<I>,
+    /// Which solutions we dominate
+    dominated_solutions: VecDeque<I>,
 }
 
-impl NonDominatedSorter {
+pub struct NonDominatedSorter<'a, S, I = usize>
+where
+    S: 'a,
+{
+    entries: Vec<Entry<'a, S, I>>,
+    current_front: Vec<(I, &'a S)>,
+}
+
+impl<'a, S> NonDominatedSorter<'a, S> {
     /// Perform a non-dominated sort of `solutions`.
     ///
     /// Each pareto front (the indices of the `solutions`) can be obtained by calling `next()`.
 
-    pub fn new<S, D>(solutions: &[S], domination: &D) -> Self
+    pub fn new<D>(solutions: &'a [S], domination: &D) -> Self
     where
         D: DominationOrd<Solution = S>,
     {
         let mut current_front = Vec::new();
 
-        let mut arr: Vec<Entry<S, usize>> = solutions
+        let mut entries: Vec<_> = solutions
             .iter()
             .enumerate()
             .map(|(index, solution)| Entry {
                 solution,
                 index,
                 domination_count: 0,
-                dominated_solutions: Vec::new(),
+                dominated_solutions: VecDeque::new(),
             })
             .collect();
 
-        for mid in 1..arr.len() + 1 {
-            let (front_slice, tail_slice) = arr.split_at_mut(mid);
+        for mid in 1..entries.len() + 1 {
+            let (front_slice, tail_slice) = entries.split_at_mut(mid);
             debug_assert!(front_slice.len() > 0);
             let p = front_slice.last_mut().unwrap();
             for q in tail_slice.iter_mut() {
@@ -56,14 +59,14 @@ impl NonDominatedSorter {
                     Ordering::Less => {
                         // p dominates q
                         // Add `q` to the set of solutions dominated by `p`.
-                        p.dominated_solutions.push(q.index);
+                        p.dominated_solutions.push_back(q.index);
                         // q is dominated by p
                         q.domination_count += 1;
                     }
                     Ordering::Greater => {
                         // p is dominated by q
                         // Add `p` to the set of solutions dominated by `q`.
-                        q.dominated_solutions.push(p.index);
+                        q.dominated_solutions.push_back(p.index);
                         // q dominates p
                         // Increment domination counter of `p`.
                         p.domination_count += 1;
@@ -74,24 +77,26 @@ impl NonDominatedSorter {
             if p.domination_count == 0 {
                 // `p` belongs to the first front as it is not dominated by any
                 // other solution.
-                current_front.push(p.index);
+                current_front.push((p.index, p.solution));
             }
         }
 
-        // XXX: this is inefficient
-        NonDominatedSorter {
-            domination_count: arr.iter().map(|e| e.domination_count).collect(),
-            dominated_solutions: arr.iter().map(|e| e.dominated_solutions.clone()).collect(),
-            current_front: current_front,
+        Self {
+            entries,
+            current_front,
         }
     }
+
+    // Returns an iterator that yields all pareto fronts
+    // pub fn pareto_front_iter()
 }
 
-/// Iterates over each pareto front.
-impl Iterator for NonDominatedSorter {
-    type Item = Vec<usize>;
+/// Iterate over the pareto fronts. Each call to next() will yield the
+/// next pareto front.
+impl<'a, S> Iterator for NonDominatedSorter<'a, S> {
+    type Item = Vec<(usize, &'a S)>;
 
-    /// Returns the next front
+    /// Return the next pareto front
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_front.is_empty() {
@@ -101,13 +106,24 @@ impl Iterator for NonDominatedSorter {
         // Calculate the next front
 
         let mut next_front = Vec::new();
-        for &p_i in self.current_front.iter() {
-            for &q_i in self.dominated_solutions[p_i].iter() {
-                debug_assert!(self.domination_count[q_i] > 0);
-                self.domination_count[q_i] -= 1;
-                if self.domination_count[q_i] == 0 {
-                    // q belongs to the next front
-                    next_front.push(q_i);
+        for &(p_i, _) in self.current_front.iter() {
+            // to calculate the next front, we have to remove the
+            // solutions of the current front, and as such, decrease the
+            // domination_count of they dominated_solutions. We can
+            // destruct the dominated_solutions array here, as we will
+            // no longer need it.
+            // The only problem with poping off solutions off the end is
+            // that we will populate the fronts in reverse order. For
+            // that reason, we are using a VecDeque. This should give us
+            // a stable sort.
+
+            while let Some(q_i) = self.entries[p_i].dominated_solutions.pop_front() {
+                let q = &mut self.entries[q_i];
+                debug_assert!(q.domination_count > 0);
+                q.domination_count -= 1;
+                if q.domination_count == 0 {
+                    // q is not dominated by any other solution. it belongs to the next front.
+                    next_front.push((q_i, q.solution));
                 }
             }
         }
@@ -120,11 +136,11 @@ impl Iterator for NonDominatedSorter {
     }
 }
 
-pub fn non_dominated_sort<S, D>(
-    solutions: &[S],
+pub fn non_dominated_sort<'a, S, D>(
+    solutions: &'a [S],
     domination: &D,
     cap_fronts_at: usize,
-) -> Vec<Vec<usize>>
+) -> Vec<Vec<(usize, &'a S)>>
 where
     D: DominationOrd<Solution = S>,
 {
@@ -154,6 +170,13 @@ mod helper {
             Tuple(0, 2),
         ]
     }
+    pub fn keep_only_index(front: &[(usize, &Tuple)]) -> Vec<usize> {
+        front.iter().map(|&(i, _)| i).collect()
+    }
+
+    pub fn assert_front_eq(expected: &[usize], front: &[(usize, &Tuple)]) {
+        assert_eq!(expected.to_owned(), keep_only_index(front));
+    }
 }
 
 #[test]
@@ -163,9 +186,9 @@ fn test_non_dominated_sort() {
     let fronts = non_dominated_sort(&solutions, &TupleDominationOrd, solutions.len());
 
     assert_eq!(3, fronts.len());
-    assert_eq!(&vec![2, 4], &fronts[0]);
-    assert_eq!(&vec![0, 1], &fronts[1]);
-    assert_eq!(&vec![3], &fronts[2]);
+    helper::assert_front_eq(&[2, 4], &fronts[0]);
+    helper::assert_front_eq(&[0, 1], &fronts[1]);
+    helper::assert_front_eq(&[3], &fronts[2]);
 }
 
 #[test]
@@ -173,9 +196,10 @@ fn test_non_dominated_sort_iter() {
     use test_helper_domination::TupleDominationOrd;
     let solutions = helper::get_solutions();
     let mut fronts = NonDominatedSorter::new(&solutions, &TupleDominationOrd);
+    let f = &|front: Vec<_>| helper::keep_only_index(&front);
 
-    assert_eq!(Some(vec![2, 4]), fronts.next());
-    assert_eq!(Some(vec![0, 1]), fronts.next());
-    assert_eq!(Some(vec![3]), fronts.next());
-    assert_eq!(None, fronts.next());
+    assert_eq!(Some(vec![2, 4]), fronts.next().map(f));
+    assert_eq!(Some(vec![0, 1]), fronts.next().map(f));
+    assert_eq!(Some(vec![3]), fronts.next().map(f));
+    assert_eq!(None, fronts.next().map(f));
 }
