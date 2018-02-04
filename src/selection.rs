@@ -1,6 +1,6 @@
 use multi_objective::MultiObjective;
 use non_dominated_sort::{NonDominatedSort, SolutionWithIndex};
-use crowding_distance::assign_crowding_distance;
+use crowding_distance::{assign_crowding_distance, AssignedCrowdingDistance};
 use std::cmp::PartialOrd;
 
 /// Select `n` solutions using the approach taken by NSGA. We first sort
@@ -15,7 +15,7 @@ pub fn selection_nsga<'a, S>(
     solutions: &'a [S],
     n: usize,
     multi_objective: &MultiObjective<S, f64>,
-) -> Vec<SolutionWithIndex<'a, S>>
+) -> Vec<AssignedCrowdingDistance<'a, S>>
 where
     S: 'a,
 {
@@ -27,11 +27,15 @@ where
     for front in NonDominatedSort::new(solutions, multi_objective) {
         if result.len() + front.solutions.len() <= n {
             // the whole front fits into the result
-            for s in front.solutions {
-                result.push(SolutionWithIndex {
-                    solution: s.solution,
-                    index: s.index,
-                });
+
+            // NOTE: I think in the original paper, the authors would
+            // not defined the crowding distance. But in order to select
+            // parents to reproduce, having the crowding distance
+            // readily available is desired.
+            let (mut assigned_crowding, _) = assign_crowding_distance(&front, multi_objective);
+
+            for s in assigned_crowding {
+                result.push(s);
                 debug_assert!(result.len() <= n);
             }
         } else {
@@ -51,11 +55,8 @@ where
 
             debug_assert!(n >= result.len());
 
-            for s in assigned_crowding.iter().take(n - result.len()) {
-                result.push(SolutionWithIndex {
-                    solution: s.solution,
-                    index: s.index,
-                });
+            for s in assigned_crowding.into_iter().take(n - result.len()) {
+                result.push(s);
                 debug_assert!(result.len() <= n);
             }
 
