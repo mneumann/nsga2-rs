@@ -14,3 +14,4 @@ include = ["src/*.rs", "examples/*.rs", "Cargo.toml", "LICENSE", "README.md"]
 rand = "0.4"
 rayon = "0.9"
 time = "0.1"
+non-dominated-sort = "0.1"

@@ -1,6 +1,3 @@
-pub mod objective;
-pub mod domination;
-pub mod non_dominated_sort;
+extern crate non_dominated_sort;
 
-#[cfg(test)]
-mod test_helper_domination;
+pub mod objective;
