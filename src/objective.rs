@@ -1,12 +1,12 @@
 use std::cmp::Ordering;
 
-/// An *objective* defines a total ordering relation and a distance
-/// metric on `solutions` in order to be able to compare any two
-/// solutions according to the following two questions:
+/// An *objective* defines a *total ordering relation* and a *distance
+/// metric* on a set of `solutions`. Given any two solutions, an
+/// objective answers the following two questions:
 ///
-/// - "which solution is better" (total order)
+/// - "which solution is the better one" (total order)
 ///
-/// - "how much better" (distance metric)
+/// - "how similar are the two solutions" (distance metric)
 ///
 /// Objectives can be seen as a projection of a (possibly) multi-variate
 /// solution value to a scalar value. There can be any number of
@@ -28,11 +28,23 @@ pub trait Objective {
     /// The output type of the distance metric.
     type Distance: Sized;
 
-    /// An objective defines a total order between two solution values.
+    /// An objective defines a total ordering between any two solution
+    /// values.
+    ///
+    /// This answers the question, is solution `a` better, equal or
+    /// worse than solution `b`, according to the objective.
     fn total_order(&self, a: &Self::Solution, b: &Self::Solution) -> Ordering;
 
-    /// An objective defines a distance metric between two solution
-    /// values. Distance values can be negative, i.e. the caller is
+    /// An objective defines a distance metric between any two solution
+    /// values.
+    ///
+    /// The distance metric answer the question, how similar the
+    /// solutions `a` and `b` are, according to the objective.  A zero
+    /// value would mean, that both solutions are in fact the same,
+    /// according to the objective. Larger magnitudes would mean "less
+    /// similar".
+    ///
+    /// Note: Distance values can be negative, i.e. the caller is
     /// responsible for obtaining absolute values.
     fn distance(&self, a: &Self::Solution, b: &Self::Solution) -> Self::Distance;
 }
