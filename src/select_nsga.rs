@@ -4,13 +4,17 @@ use non_dominated_sort::NonDominatedSort;
 use multi_objective::MultiObjective;
 use crowding_distance::{assign_crowding_distance, AssignedCrowdingDistance};
 
-/// Select `n` solutions using the approach taken by NSGA. We first sort
-/// the solutions into their corresponding pareto fronts. Then, we put
-/// as many "whole" fronts into the result as possible, until we cannot
-/// fit a whole front into the result (otherwise we would have more than
-/// `n` solutions). For this last front, sort it's solutions according
-/// to their crowding distance (higher crowding distance is better!),
-/// and chose those solutions with the higher crowding distance.
+/// Select `n` solutions using the approach taken by NSGA.
+///
+/// We first sort the solutions into their corresponding pareto fronts
+/// using a non-dominated sort algorithm. Then, we put as many
+/// "complete" fronts into the result set, until we cannot fit in a
+/// whole front anymore, without exceeding `n` solutions in the result
+/// set. For this last front, that does not completely fit into the
+/// result set, we sort it's solutions according to their crowding
+/// distance (higher crowding distance is "better"), and prefer those
+/// solutions with the higher crowding distance until we have exactly
+/// `n` solutions in the result set.
 
 pub struct SelectNSGA;
 
