@@ -4,6 +4,8 @@ use non_dominated_sort::NonDominatedSort;
 use multi_objective::MultiObjective;
 use crowding_distance::{assign_crowding_distance, AssignedCrowdingDistance};
 
+pub type RankedSolution<'a, S> = AssignedCrowdingDistance<'a, S>;
+
 /// Select `n` solutions using the approach taken by NSGA.
 ///
 /// We first sort the solutions into their corresponding pareto fronts
@@ -24,7 +26,7 @@ impl SelectAndRank for SelectNSGA {
         solutions: &'a [S],
         n: usize,
         multi_objective: &MultiObjective<S, f64>,
-    ) -> Vec<AssignedCrowdingDistance<'a, S>> {
+    ) -> Vec<RankedSolution<'a, S>> {
         // Cannot select more solutions than we actually have
         let n = solutions.len().min(n);
         debug_assert!(n <= solutions.len());
